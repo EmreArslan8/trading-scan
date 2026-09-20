@@ -17,6 +17,8 @@ BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE / "api"))
 
 from _core import CATALOG, BadRequest, run_scan  # noqa: E402
+from _pine import PineError  # noqa: E402
+from pinescan import run_pine_scan  # noqa: E402
 
 PUBLIC = BASE / "public"
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -58,14 +60,16 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_POST(self):
-        if self.path != "/api/scan":
+        routes = {"/api/scan": run_scan, "/api/pinescan": run_pine_scan}
+        action = routes.get(self.path)
+        if action is None:
             self.send_error(404)
             return
         try:
             length = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(length) or b"{}")
-            self.send_json(200, run_scan(req))
-        except BadRequest as exc:
+            self.send_json(200, action(req))
+        except (BadRequest, PineError) as exc:
             self.send_json(400, {"error": str(exc)})
         except urllib.error.HTTPError as exc:
             self.send_json(502, {"error": f"TradingView {exc.code}: {exc.reason}"})

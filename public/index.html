@@ -79,6 +79,27 @@ select:focus, input:focus { outline:none; border-color:var(--signal); box-shadow
 button { cursor:pointer; width:auto; transition:border-color .15s, color .15s, background .15s, transform .08s; }
 button:active { transform:translateY(1px); }
 
+/* mod anahtarı */
+.modes { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; margin-bottom:16px;
+  border:1px solid var(--edge); border-radius:4px; background:var(--slab-2); }
+.modes button { background:transparent; border-color:transparent; font-size:13px; font-weight:700;
+  color:var(--dim); padding:8px 6px; }
+.modes button.on { background:var(--signal); border-color:var(--signal); color:var(--void); }
+
+/* kod alanı */
+.code { width:100%; min-height:132px; resize:vertical; font-family:var(--mono); font-size:13px;
+  line-height:1.65; padding:11px 12px; background:var(--void); border:1px solid var(--edge-hot);
+  border-radius:4px; color:var(--ink); white-space:pre; overflow-wrap:normal; overflow-x:auto; }
+.code:focus { outline:none; border-color:var(--signal); box-shadow:0 0 0 2px rgba(255,176,32,.13); }
+.hint { margin:7px 0 0; font-size:12px; color:var(--dim); line-height:1.6; }
+.hint code { font-family:var(--mono); font-size:11.5px; color:var(--signal); background:var(--slab-2);
+  border-radius:3px; padding:1px 5px; }
+.snips { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+.snips button { font-family:var(--mono); font-size:11.5px; font-weight:500; color:var(--dim);
+  background:var(--slab-2); padding:5px 9px; }
+.snips button:hover { color:var(--signal); border-color:var(--signal-dim); }
+.mono-note { font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+
 .chips { display:flex; flex-wrap:wrap; gap:6px; }
 .chip {
   font-family:var(--sans); font-size:12.5px; font-weight:600; padding:6px 10px;
@@ -147,6 +168,8 @@ body.busy .bar-load { opacity:1; }
 .bar-load::before { content:""; position:absolute; inset:0; width:38%;
   background:linear-gradient(90deg,transparent,var(--signal),transparent);
   animation:sweep 1.05s cubic-bezier(.5,0,.5,1) infinite; }
+body.determinate .bar-load::before { animation:none; width:var(--pct,0%); left:0;
+  background:var(--signal); transition:width .25s ease; }
 @keyframes sweep { from{transform:translateX(-100%)} to{transform:translateX(365%)} }
 
 .fire {
@@ -223,7 +246,27 @@ details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); bac
   <aside>
     <button class="fire" id="run">Tara &nbsp;<span style="opacity:.6;font-weight:600">⌘↵</span></button>
 
-    <p class="legend">hazır taramalar</p>
+    <div class="modes">
+      <button id="modeSimple" class="on">Hazır kriterler</button>
+      <button id="modePine">Kendi kodum</button>
+    </div>
+
+    <div id="pineBox" hidden>
+      <p class="legend">indikatör kodu</p>
+      <textarea class="code" id="expr" spellcheck="false">crossover(ema(close, 9), ema(close, 21)) and rsi(close, 14) > 45</textarea>
+      <div class="snips" id="snips"></div>
+      <p class="hint">
+        Kaynaklar: <code>open high low close volume hl2 hlc3</code><br>
+        Fonksiyonlar: <code>sma ema rma wma vwap rsi macd macd_signal macd_hist stoch_k stoch_d
+        atr adx di_plus di_minus bb_upper bb_lower stdev highest lowest change crossover crossunder
+        rising falling barssince nz abs sum max min</code><br>
+        Gecikme: <code>close[1]</code> · Son mumda doğru olan semboller listelenir.
+      </p>
+      <p class="legend" style="margin-top:20px">evren filtresi</p>
+      <p class="hint" style="margin-top:-4px">Kod, aşağıdaki kriterlerden geçen sembollerde çalışır.</p>
+    </div>
+
+    <p class="legend" id="presetLegend">hazır taramalar</p>
     <div class="chips" id="presets"></div>
 
     <p class="legend" style="margin-top:20px">kapsam</p>
@@ -434,7 +477,96 @@ function render(res) {
   }).join("");
 }
 
+/* ── mod ───────────────────────────────────────────────── */
+let MODE = "simple";
+
+const SNIPPETS = [
+  ["EMA kesişimi", "crossover(ema(close, 9), ema(close, 21))"],
+  ["RSI dipten dönüş", "rsi(close, 14) < 35 and rsi(close, 14) > rsi(close, 14)[1]"],
+  ["MACD kesişimi", "crossover(macd(), macd_signal())"],
+  ["Hacim patlaması", "volume > sma(volume, 20) * 2"],
+  ["Trend + geri çekilme", "close > ema(close, 200) and rsi(close, 14) < 45"],
+  ["Bollinger kırılımı", "close > bb_upper(20, 2)"],
+  ["20 günün zirvesi", "close >= highest(high, 20)"],
+  ["ADX güçlü trend", "adx(14) > 25 and di_plus(14) > di_minus(14)"],
+];
+
+function setMode(mode) {
+  MODE = mode;
+  $("modeSimple").classList.toggle("on", mode === "simple");
+  $("modePine").classList.toggle("on", mode === "pine");
+  $("pineBox").hidden = mode !== "pine";
+  $("presetLegend").textContent = mode === "pine" ? "hazır evrenler" : "hazır taramalar";
+  $("run").firstChild.textContent = mode === "pine" ? "Kodu çalıştır " : "Tara ";
+}
+
+function progress(done, total) {
+  document.body.classList.add("busy", "determinate");
+  document.body.style.setProperty("--pct", `${Math.round((done / total) * 100)}%`);
+}
+
+const chunk = (list, size) =>
+  Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
+
+async function runPine() {
+  const rules = [...$("rules").children].map(b => b._read());
+  if (!rules.length) return say("evreni daraltmak için en az bir kriter gerekir", "bad");
+
+  const expr = $("expr").value.trim();
+  if (!expr) return say("indikatör kodu boş", "bad");
+
+  const market = $("market").value, timeframe = $("timeframe").value;
+  const t0 = performance.now();
+  say("evren taranıyor…", "busy");
+  document.body.classList.add("busy");
+  $("run").disabled = true;
+
+  try {
+    // 1) evren: normal tarayıcı ile sembolleri daralt
+    const uni = await fetch("/api/scan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ market, timeframe, filters: rules, columns: chosenCols(),
+        sort: { by: $("sortBy").value, order: $("sortOrder").value },
+        limit: Number($("limit").value) || 100 }),
+    }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error); return d; }));
+
+    if (!uni.rows.length) { render({ ...uni, rows: [] }); return say("evren boş"); }
+
+    // 2) kodu parça parça çalıştır, ilerlemeyi göster
+    const byTicker = Object.fromEntries(uni.rows.map(r => [r.ticker, r]));
+    const parts = chunk(uni.rows.map(r => r.ticker), 25);
+    const hits = [];
+    let done = 0, failed = 0;
+
+    for (const part of parts) {
+      const res = await fetch("/api/pinescan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ market, timeframe, tickers: part, expr, bars: 400 }),
+      }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error); return d; }));
+
+      res.rows.forEach(r => {
+        if (!r.ok) { failed++; return; }
+        if (r.signal) hits.push({ ...byTicker[r.ticker], sinceBars: r.sinceBars });
+      });
+      done += part.length;
+      progress(done, uni.rows.length);
+      say(`kod çalışıyor… ${done}/${uni.rows.length} · ${hits.length} sinyal`, "busy");
+    }
+
+    render({ total: hits.length, columns: uni.columns, rows: hits,
+             query: { evren: uni.rows.length, kod: expr, periyot: timeframe || "1G" } });
+    const note = failed ? ` · ${failed} sembolde veri yok` : "";
+    say(`${((performance.now() - t0) / 1000).toFixed(1)} sn · ${uni.rows.length} sembol tarandı${note}`);
+  } catch (err) {
+    say(err.message, "bad");
+  } finally {
+    document.body.classList.remove("busy", "determinate");
+    $("run").disabled = false;
+  }
+}
+
 async function run() {
+  if (MODE === "pine") return runPine();
   const rules = [...$("rules").children].map(b => b._read());
   if (!rules.length) return say("en az bir kriter gerekir", "bad");
 
@@ -487,6 +619,15 @@ function csv() {
   });
   applyPreset(CAT.presets[0]);
   $("market").onchange = onMarketChange;
+  setMode("simple");
+  $("modeSimple").onclick = () => setMode("simple");
+  $("modePine").onclick = () => setMode("pine");
+  SNIPPETS.forEach(([label, code]) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.onclick = () => { $("expr").value = code; $("expr").focus(); };
+    $("snips").appendChild(b);
+  });
   $("colToggle").onclick = () => $("coltool").classList.toggle("open");
   $("colClear").onclick = () => {
     $("colDrawer").querySelectorAll("input:checked").forEach(c => (c.checked = false));
