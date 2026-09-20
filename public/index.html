@@ -232,6 +232,17 @@ body.determinate .bar-load::before { animation:none; width:var(--pct,0%); left:0
 .readout button { font-size:12.5px; font-weight:600; color:var(--dim); background:transparent; padding:8px 14px; }
 .readout button:hover { color:var(--signal); border-color:var(--signal-dim); }
 .readout button:disabled { opacity:.4; cursor:wait; }
+.readout .icon-btn { width:36px; height:34px; padding:0; display:grid; place-items:center; }
+.icon-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round; }
+.icon-btn .collapse-icon { display:none; }
+body.table-focus main, body.table-focus.range-mode main { grid-template-columns:1fr; }
+body.table-focus aside { display:none; }
+body.table-focus section.results { padding:18px 22px 28px; animation:table-open .22s ease-out both; }
+body.table-focus .tblwrap { max-height:calc(100vh - 155px); }
+body.table-focus .icon-btn .expand-icon { display:none; }
+body.table-focus .icon-btn .collapse-icon { display:block; }
+@keyframes table-open { from{opacity:.7;transform:scale(.995)} to{opacity:1;transform:none} }
 .notice { display:flex; align-items:center; gap:10px; margin:-3px 0 12px; padding:9px 11px;
   border:1px solid var(--signal-dim); border-radius:4px; background:rgba(255,176,32,.07);
   color:var(--dim); font-size:12.5px; }
@@ -390,6 +401,10 @@ details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); bac
       <div><span class="count" id="count">—</span><small id="countNote">sonuç bekleniyor</small></div>
       <div class="spacer"></div>
       <button id="csv">csv indir</button>
+      <button class="icon-btn" id="expandTable" type="button" aria-label="Tabloyu genişlet" aria-pressed="false" title="Tabloyu genişlet">
+        <svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/><path d="M3 8l6-6M21 8l-6-6M21 16l-6 6M3 16l6 6"/></svg>
+        <svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9H4V4M15 9h5V4M20 15v5h-5M4 15v5h5"/><path d="M4 4l6 6M20 4l-6 6M20 20l-6-6M4 20l6-6"/></svg>
+      </button>
     </div>
     <div class="notice" id="notice" hidden><span id="noticeText"></span><button id="noticeRetry">Yeniden dene</button></div>
     <div class="coltool" id="coltool">
@@ -618,6 +633,14 @@ function showNotice(text, type="warning") {
 }
 
 function hideNotice() { $("notice").hidden = true; }
+
+function toggleTableFocus(force) {
+  const active = force ?? !document.body.classList.contains("table-focus");
+  document.body.classList.toggle("table-focus", active);
+  $("expandTable").setAttribute("aria-pressed", String(active));
+  $("expandTable").setAttribute("aria-label", active ? "Tabloyu küçült" : "Tabloyu genişlet");
+  $("expandTable").title = active ? "Tabloyu küçült (Esc)" : "Tabloyu genişlet";
+}
 
 function render(res) {
   last = res;
@@ -993,7 +1016,11 @@ function csv() {
   $("run").onclick = run;
   $("noticeRetry").onclick = run;
   $("csv").onclick = csv;
-  addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run(); });
+  $("expandTable").onclick = () => toggleTableFocus();
+  addEventListener("keydown", e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run();
+    if (e.key === "Escape" && document.body.classList.contains("table-focus")) toggleTableFocus(false);
+  });
 })();
 </script>
 </body>
