@@ -538,7 +538,7 @@ async function runPine() {
     const hits = [];
     let done = 0, failed = 0;
 
-    for (const part of parts) {
+    const runPart = async (part) => {
       const res = await fetch("/api/pinescan", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ market, timeframe, tickers: part, expr, bars: 400 }),
@@ -551,6 +551,11 @@ async function runPine() {
       done += part.length;
       progress(done, uni.rows.length);
       say(`kod çalışıyor… ${done}/${uni.rows.length} · ${hits.length} sinyal`, "busy");
+    };
+
+    // ikişer parça paralel: daha fazlası veri kaynağını yavaşlatıyor
+    for (let i = 0; i < parts.length; i += 2) {
+      await Promise.all(parts.slice(i, i + 2).map(runPart));
     }
 
     render({ total: hits.length, columns: uni.columns, rows: hits,

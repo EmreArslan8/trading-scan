@@ -19,7 +19,7 @@ from _series import Series, barssince
 
 MAX_TICKERS = 30          # tek istekte; arayüz uzun listeyi parçalara böler
 MAX_BARS = 1000
-WORKERS = 8
+WORKERS = 25          # parça başına tek turda bitecek kadar
 
 
 def run_pine_scan(req):

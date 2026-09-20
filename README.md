@@ -16,6 +16,10 @@ Python 3.8+ yeterli. **Kurulacak paket yok** — yalnızca standart kütüphane.
 |---|---|
 | `api/_core.py` | tarama mantığı; ekrandan gelen kriterleri TradingView sorgusuna çevirir |
 | `api/scan.py` | `POST /api/scan` uç noktası |
+| `api/pinescan.py` | `POST /api/pinescan` — özel indikatör kodunu çalıştırır |
+| `api/_series.py` | seri aritmetiği ve indikatörler (saf Python) |
+| `api/_pine.py` | ifade değerlendirici (AST beyaz liste) |
+| `api/_feeds.py` | mum verisi kaynakları (Yahoo, Binance) |
 | `api/catalog.py` | `GET /api/catalog` uç noktası |
 | `api/fields.json` | piyasalar, periyotlar, operatörler, alanlar, hazır taramalar |
 | `public/index.html` | arayüz (tek dosya, çerçeve yok) |
@@ -52,10 +56,54 @@ serbest metin sorguya girmez.
 - Periyot seçimi yalnızca `tf: true` alanlara uygulanır; temel analiz alanları hep günlüktür.
 - Tek istekte en fazla 500 satır döner (`MAX_ROWS`).
 
+## Kendi indikatör kodunuz ("Kendi kodum" modu)
+
+Pine Script TradingView dışında çalışmaz; bu mod, Pine'ın karşılığı olan
+fonksiyonları Python'da sunar ve ifadeyi her sembolün mumları üzerinde çalıştırır.
+
+    crossover(ema(close, 9), ema(close, 21)) and rsi(close, 14) > 45
+    close > bb_upper(20, 2) and volume > sma(volume, 20) * 2
+    barssince(crossover(macd(), macd_signal())) < 5 and adx(14) > 25
+
+- **Kaynaklar:** `open high low close volume hl2 hlc3 ohlc4`
+- **Fonksiyonlar:** `sma ema rma wma vwap rsi macd macd_signal macd_hist
+  stoch_k stoch_d atr tr adx di_plus di_minus bb_upper bb_lower bb_basis stdev
+  highest lowest change crossover crossunder cross rising falling barssince nz
+  abs sum max min`
+- **Gecikme:** `close[1]` bir önceki mum
+- Sonuç, **son mumda** doğru olan sembollerdir.
+
+Akış iki aşamalıdır: önce ekrandaki kriterlerle evren daraltılır (TradingView,
+saniyenin altında), sonra kalan sembollerin mumları indirilip kod çalıştırılır.
+100 sembol yaklaşık 13 saniye sürer.
+
+### Doğruluk
+
+İndikatörler TradingView'in kendi değerleriyle karşılaştırıldı; RSI, EMA, SMA,
+MACD, sinyal, ATR, ADX, Stokastik ve Bollinger değerleri dört ondalık basamağa
+kadar örtüşüyor.
+
+### Güvenlik
+
+İfade `eval` ile çalıştırılmaz. Metin AST'ye çevrilir, yalnızca izin verilen
+düğüm türleri ve isimler kabul edilir; öznitelik erişimi, içe aktarma, döngü ve
+atama reddedilir.
+
+### Veri kaynakları
+
+| piyasa | kaynak |
+|---|---|
+| BIST, ABD, Almanya, İngiltere | Yahoo Finance |
+| Kripto | Binance |
+| Forex | Yahoo Finance |
+
+Dört saatlik periyot yalnızca kriptoda vardır. Bazı BIST sembollerinde Yahoo
+verisi bulunmaz; bu semboller "veri yok" olarak raporlanır.
+
 ## Sınırlar
 
-- Pine Script sunucu tarafında çalıştırılamaz. Özel bir Pine indikatörü gerekiyorsa
-  mantığın Python'da yeniden yazılması gerekir; bu uygulama TradingView'in kendi
-  hesapladığı kolonları kullanır.
+- Pine Script sunucu tarafında çalıştırılamaz; "Kendi kodum" modu Pine'ın
+  karşılığı olan fonksiyonları Python'da sunar. Çok karmaşık bir strateji
+  (birden fazla zaman dilimi, pozisyon yönetimi) bire bir taşınmayabilir.
 - Servis TradingView'in resmî olarak belgelenmemiş uç noktasıdır; kolon adları
   zamanla değişebilir. Değişirse düzeltme `api/fields.json` içindedir.

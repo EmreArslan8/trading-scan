@@ -11,9 +11,25 @@ YAHOO_INTERVAL = {"": "1d", "|1": "1m", "|5": "5m", "|15": "15m", "|60": "60m",
                   "|1W": "1wk", "|1M": "1mo"}
 BINANCE_INTERVAL = {"": "1d", "|1": "1m", "|5": "5m", "|15": "15m", "|60": "1h",
                     "|240": "4h", "|1W": "1w", "|1M": "1M"}
-# Yahoo'da veri aralığı, periyoda göre sınırlı
-YAHOO_RANGE = {"1m": "7d", "5m": "60d", "15m": "60d", "60m": "730d",
-               "1d": "5y", "1wk": "10y", "1mo": "10y"}
+# Yahoo'da aralık periyoda göre sınırlı. Gereğinden geniş aralık istemek
+# yanıtı kat kat yavaşlatır, bu yüzden istenen mum sayısına göre seçilir:
+# (en fazla kaç mum, aralık) — listedeki ilk yeterli aralık kullanılır.
+YAHOO_RANGE = {
+    "1m":  [(300, "1d"), (1600, "5d"), (None, "7d")],
+    "5m":  [(150, "5d"), (400, "1mo"), (None, "60d")],
+    "15m": [(120, "5d"), (400, "1mo"), (None, "60d")],
+    "60m": [(150, "1mo"), (500, "3mo"), (1600, "1y"), (None, "2y")],
+    "1d":  [(200, "1y"), (480, "2y"), (1200, "5y"), (None, "10y")],
+    "1wk": [(50, "1y"), (250, "5y"), (None, "10y")],
+    "1mo": [(55, "5y"), (None, "10y")],
+}
+
+
+def yahoo_range(interval, bars):
+    for limit, rng in YAHOO_RANGE[interval]:
+        if limit is None or bars <= limit:
+            return rng
+    return YAHOO_RANGE[interval][-1][1]
 SUFFIX = {"turkey": ".IS", "america": "", "germany": ".DE", "uk": ".L"}
 
 
@@ -46,7 +62,7 @@ def fetch_yahoo(symbol, timeframe, bars):
     if not interval:
         raise FeedError("bu periyot hisse verisinde yok (4 saatlik yalnızca kriptoda)")
     url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-           f"?interval={interval}&range={YAHOO_RANGE[interval]}")
+           f"?interval={interval}&range={yahoo_range(interval, bars)}")
     body = _get(url)
     result = (body.get("chart") or {}).get("result")
     if not result:
