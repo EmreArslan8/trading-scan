@@ -37,14 +37,6 @@
       "label": "Brezilya (B3)"
     },
     {
-      "id": "crypto",
-      "label": "Kripto"
-    },
-    {
-      "id": "forex",
-      "label": "Forex"
-    },
-    {
       "id": "germany",
       "label": "Almanya (XETR)"
     },
@@ -63,6 +55,98 @@
     {
       "id": "uk",
       "label": "İngiltere (LSE)"
+    },
+    {
+      "id": "netherlands",
+      "label": "Hollanda (Euronext Amsterdam)"
+    },
+    {
+      "id": "belgium",
+      "label": "Belçika (Euronext Brüksel)"
+    },
+    {
+      "id": "portugal",
+      "label": "Portekiz (Euronext Lizbon)"
+    },
+    {
+      "id": "ireland",
+      "label": "İrlanda (Euronext Dublin)"
+    },
+    {
+      "id": "switzerland",
+      "label": "İsviçre (SIX)"
+    },
+    {
+      "id": "austria",
+      "label": "Avusturya (Viyana)"
+    },
+    {
+      "id": "denmark",
+      "label": "Danimarka (Nasdaq Kopenhag)"
+    },
+    {
+      "id": "sweden",
+      "label": "İsveç (Nasdaq Stockholm)"
+    },
+    {
+      "id": "norway",
+      "label": "Norveç (Oslo Børs)"
+    },
+    {
+      "id": "finland",
+      "label": "Finlandiya (Nasdaq Helsinki)"
+    },
+    {
+      "id": "poland",
+      "label": "Polonya (GPW)"
+    },
+    {
+      "id": "greece",
+      "label": "Yunanistan (ATHEX)"
+    },
+    {
+      "id": "newzealand",
+      "label": "Yeni Zelanda (NZX)"
+    },
+    {
+      "id": "korea",
+      "label": "Güney Kore (KRX)"
+    },
+    {
+      "id": "taiwan",
+      "label": "Tayvan (TWSE)"
+    },
+    {
+      "id": "indonesia",
+      "label": "Endonezya (IDX)"
+    },
+    {
+      "id": "thailand",
+      "label": "Tayland (SET)"
+    },
+    {
+      "id": "israel",
+      "label": "İsrail (TASE)"
+    },
+    {
+      "id": "china",
+      "label": "Çin (Şanghay/Shenzhen)"
+    },
+    {
+      "id": "chile",
+      "label": "Şili (Santiago)"
+    },
+    {
+      "id": "argentina",
+      "label": "Arjantin (BCBA)"
+    },
+    {
+      "id": "crypto",
+      "label": "Kripto"
+    },
+    {
+      "id": "forex",
+      "label": "Forex"
     }
   ],
   "timeframes": [

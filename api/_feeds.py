@@ -35,12 +35,28 @@ SUFFIX = {
     "india": ".NS", "singapore": ".SI", "hongkong": ".HK",
     "australia": ".AX", "brazil": ".SA", "germany": ".DE",
     "france": ".PA", "italy": ".MI", "spain": ".MC", "uk": ".L",
+    "netherlands": ".AS", "belgium": ".BR", "portugal": ".LS",
+    "ireland": ".IR", "switzerland": ".SW", "austria": ".VI",
+    "denmark": ".CO", "sweden": ".ST", "norway": ".OL", "finland": ".HE",
+    "poland": ".WA", "greece": ".AT", "newzealand": ".NZ",
+    "korea": ".KS", "taiwan": ".TW", "indonesia": ".JK",
+    "thailand": ".BK", "israel": ".TA", "china": ".SS",
+    "chile": ".SN", "argentina": ".BA",
 }
+# Borsa kodu, piyasa varsayılanını ezer. EURONEXT bilerek yok: Amsterdam,
+# Brüksel, Lizbon, Dublin ve Paris aynı kod altında toplanır ama Yahoo'da
+# ayrı ekler alır, o yüzden kararı piyasa verir.
 EXCHANGE_SUFFIX = {
     "BIST": ".IS", "TSX": ".TO", "TSXV": ".V", "TSE": ".T",
     "NSE": ".NS", "BSE": ".BO", "SGX": ".SI", "HKEX": ".HK",
     "ASX": ".AX", "BMFBOVESPA": ".SA", "XETR": ".DE",
-    "EURONEXT": ".PA", "MIL": ".MI", "BME": ".MC", "LSE": ".L",
+    "CSE": ".CN", "NEO": ".NE",
+    "MIL": ".MI", "BME": ".MC", "LSE": ".L",
+    "SIX": ".SW", "VIE": ".VI", "OMXCOP": ".CO", "OMXSTO": ".ST",
+    "OSL": ".OL", "OMXHEX": ".HE", "GPW": ".WA", "ATHEX": ".AT",
+    "NZX": ".NZ", "KRX": ".KS", "TWSE": ".TW", "TPEX": ".TWO",
+    "IDX": ".JK", "SET": ".BK", "TASE": ".TA",
+    "SSE": ".SS", "SZSE": ".SZ", "BCS": ".SN", "BCBA": ".BA",
 }
 
 
@@ -58,17 +74,49 @@ def _get(url, timeout=15):
         raise FeedError(f"veri alınamadı: {type(exc).__name__}") from None
 
 
+def _plain_and_suffix(ticker, market):
+    """Sembolü kaynak yazımına çevirir ve ekini ayrı döner."""
+    exchange = ticker.split(":", 1)[0] if ":" in ticker else ""
+    plain = ticker.split(":")[-1]
+    # Hisse sınıfı ayıracı: TradingView "_" (ABD'de "."), Yahoo "-" kullanır.
+    # ERIC_B -> ERIC-B, NOVO_B -> NOVO-B, BRK.B -> BRK-B
+    plain = plain.replace("_", "-")
+    if market == "america":
+        plain = plain.replace(".", "-")
+    if market == "hongkong" and plain.isdigit():
+        plain = plain.zfill(4)
+    return plain, EXCHANGE_SUFFIX.get(exchange, SUFFIX.get(market, ""))
+
+
 def feed_symbol(ticker, market):
     """'BIST:THYAO' → veri kaynağındaki sembol."""
-    exchange = ticker.split(":", 1)[0] if ":" in ticker else ""
     plain = ticker.split(":")[-1]
     if market == "crypto":
         return plain
     if market == "forex":
         return plain + "=X"
-    if market == "hongkong" and plain.isdigit():
-        plain = plain.zfill(4)
-    return plain + EXCHANGE_SUFFIX.get(exchange, SUFFIX.get(market, ""))
+    base, suffix = _plain_and_suffix(ticker, market)
+    return base + suffix
+
+
+def feed_symbols(ticker, market):
+    """Denenecek kaynak sembolleri, en olasıdan başlayarak."""
+    if market in ("crypto", "forex"):
+        return [feed_symbol(ticker, market)]
+
+    base, suffix = _plain_and_suffix(ticker, market)
+    bases = [base]
+    if "." in base:
+        head, _, tail = base.rpartition(".")
+        # TSX:RCI.B gibi hisse sınıfları kaynakta tire ile yazılır (RCI-B),
+        # BCBA:METR.CI gibi takas sınıfı ekleri ise hiç yer almaz (METR).
+        if head and tail:
+            bases.append(f"{head}-{tail}")
+        if head:
+            bases.append(head)
+
+    suffixes = [suffix] + [s for s in ALT_SUFFIX.get(market, ()) if s != suffix]
+    return [b + s for b in bases for s in suffixes]
 
 
 def fetch_yahoo(symbol, timeframe, bars):
@@ -111,9 +159,34 @@ def fetch_binance(symbol, timeframe, bars):
     }
 
 
+# Tek borsa kodunun Yahoo'da birden çok eke karşılık geldiği piyasalar:
+# KRX hem KOSPI (.KS) hem KOSDAQ (.KQ) demek, sembolden hangisi olduğu
+# anlaşılmıyor. Sembol bulunamazsa sıradaki ek denenir.
+ALT_SUFFIX = {
+    "korea": (".KS", ".KQ"),
+    "taiwan": (".TW", ".TWO"),
+    "china": (".SS", ".SZ"),
+    "india": (".NS", ".BO"),
+    "canada": (".TO", ".V"),
+}
+
+# Yalnızca "bu sembol burada yok" anlamına gelen hatalarda yedek ek denenir;
+# hız sınırı ya da ağ hatasında denemeyi tekrarlamak kaynağı boşuna yorar.
+NOT_FOUND = ("sembol bulunamadı", "mum verisi boş", "veri kaynağı 404")
+
+
+
 def fetch_bars(ticker, market, timeframe, bars=400):
     """Bir sembolün mumlarını uygun kaynaktan getirir."""
-    symbol = feed_symbol(ticker, market)
     if market == "crypto":
-        return fetch_binance(symbol, timeframe, bars)
-    return fetch_yahoo(symbol, timeframe, bars)
+        return fetch_binance(feed_symbol(ticker, market), timeframe, bars)
+
+    last = None
+    for symbol in feed_symbols(ticker, market):
+        try:
+            return fetch_yahoo(symbol, timeframe, bars)
+        except FeedError as exc:
+            last = exc
+            if not any(text in str(exc) for text in NOT_FOUND):
+                raise
+    raise last

@@ -14,6 +14,20 @@ MARKETS = {m["id"] for m in CATALOG["markets"]}
 TIMEFRAMES = {t["id"] for t in CATALOG["timeframes"]}
 
 SCANNER = "https://scanner.tradingview.com/{market}/scan"
+
+# Arayüzün alan listesinde yer almayan, yalnızca sunucunun/range taramasının
+# kullandığı ham TradingView kolonları. Zaman dilimi eki almazlar.
+#
+# Aylık klasik pivot önceki ayın H/L/C'sinden hesaplanır:
+#     P = (H + L + C) / 3,   R1 = 2P - L,   S1 = 2P - H
+# Tersine çevrilince önceki ayın aralığı birebir geri gelir:
+#     H = 2P - S1,           L = 2P - R1
+# Bu sayede aylık range taraması mum indirmeden, tek istekte tamamlanır.
+RAW_COLUMNS = {
+    "Pivot.M.Classic.Middle",
+    "Pivot.M.Classic.R1",
+    "Pivot.M.Classic.S1",
+}
 MAX_ROWS = 500
 MAX_ALL_ROWS = 2000
 PAGE_SIZE = 500
@@ -25,6 +39,8 @@ class BadRequest(Exception):
 
 def col(field_id, timeframe):
     """Alan kimliğini, seçili zaman dilimine göre TradingView kolon adına çevirir."""
+    if field_id in RAW_COLUMNS:
+        return field_id
     if field_id not in FIELDS:
         raise BadRequest(f"bilinmeyen alan: {field_id}")
     if timeframe and FIELDS[field_id]["tf"]:
@@ -89,8 +105,24 @@ def build_payload(req):
     limit = min(int(req.get("limit") or (MAX_ALL_ROWS if all_rows else 100)),
                 MAX_ALL_ROWS if all_rows else MAX_ROWS)
 
+    # TradingView evreninde aynı kağıdın birden çok kotasyonu bulunur:
+    # alternatif işlem mekanları (LS, LSX, GETTEX), fraksiyonel lotlar (BBAS3F)
+    # ve sponsorsuz BDR'ler. Bunların mum geçmişi veri sağlayıcılarda yoktur —
+    # çünkü ayrı bir enstrüman değil, aynı enstrümanın başka defteridirler.
+    # is_symbol_primary_listing ile yalnızca birincil kotasyon taranır.
+    # (is_primary aynı işi görmüyor: İsviçre'de SIX yerine BX'i seçiyor.)
+    filters = [build_filter(r, timeframe) for r in rules]
+    if req.get("primaryOnly"):
+        filters.append({"left": "is_symbol_primary_listing",
+                        "operation": "equal", "right": True})
+    # Fon, ETF, ETP ve yapılandırılmış sertifikaların günlük mum geçmişi
+    # ücretsiz kaynaklarda yok; evren hisseyle sınırlanınca range taraması
+    # neredeyse her piyasada eksiksiz sonuç verir.
+    if req.get("stocksOnly"):
+        filters.append({"left": "type", "operation": "equal", "right": "stock"})
+
     return {
-        "filter": [build_filter(r, timeframe) for r in rules],
+        "filter": filters,
         "options": {"lang": "tr"},
         "markets": [market],
         "symbols": {"query": {"types": []}, "tickers": []},

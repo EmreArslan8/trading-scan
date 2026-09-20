@@ -345,6 +345,9 @@ details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); bac
         <div class="range-step"><span class="no">04</span><label for="rangeCondition">Güncel fiyat</label><select id="rangeCondition">
           <option value="below">Seviyenin altında</option><option value="above">Seviyenin üstünde</option>
         </select></div>
+        <div class="range-step"><span class="no">05</span><label for="rangeScope">Evren kapsamı</label><select id="rangeScope">
+          <option value="stock">Yalnız hisseler</option><option value="all">Hisse + fon/ETF</option>
+        </select></div>
       </div>
       <div class="range-readout">
         <div class="mini-range" aria-hidden="true">
@@ -806,102 +809,62 @@ async function runPine() {
   }
 }
 
+/* ── range taraması ────────────────────────────────────────
+   Ay modu: TradingView'in aylık klasik pivotu önceki ayın H/L/C'sinden
+   hesaplanır, dolayısıyla geri çevrilebilir (bkz. api/_core.py RAW_COLUMNS).
+   Tek istekte tüm evren gelir; sembol başına mum indirilmez.
+   Çeyrek modu: TradingView'de çeyreklik pivot yok, mumlar Yahoo'dan çekilir. */
+const PIVOT_COLUMNS = ["Pivot.M.Classic.Middle", "Pivot.M.Classic.R1", "Pivot.M.Classic.S1"];
+const MONTHS_TR = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+
+function previousMonthLabel() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${MONTHS_TR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function rangeRow(row, low, high, level, condition, periodLabel) {
+  const price = row.values[0];
+  if (!Number.isFinite(price)) return null;
+  const reference = level === "low" ? low : level === "high" ? high : (low + high) / 2;
+  const signal = condition === "below" ? price < reference : price > reference;
+  if (!signal) return null;
+  return {
+    ticker:row.ticker, symbol:row.symbol, name:row.name || "",
+    values:[price, reference, low, high,
+            reference ? ((price / reference) - 1) * 100 : null, periodLabel],
+  };
+}
+
+function finishRange(hits, uni, missing, condition, t0, query) {
+  hits.sort((a, b) => condition === "below" ? a.values[4] - b.values[4] : b.values[4] - a.values[4]);
+  render({ total:hits.length, columns:RANGE_COLUMNS, rows:hits, query });
+  const truncated = uni.total > uni.rows.length ? ` · ilk ${uni.rows.length}/${uni.total}` : "";
+  const gap = missing.length ? ` · ${missing.length} sembolde veri yok` : "";
+  say(`${((performance.now()-t0)/1000).toFixed(1)} sn · ${uni.rows.length} sembol${truncated}${gap}`);
+  if (missing.length) {
+    const sample = missing.slice(0, 6).join(", ");
+    const more = missing.length > 6 ? ` ve ${missing.length - 6} diğer` : "";
+    showNotice(`${missing.length} sembolde referans dönem verisi yok (${sample}${more}). Diğer sonuçlar gösteriliyor.`);
+  }
+}
+
 async function runRange() {
   const market = $("rangeMarket").value;
   const period = $("rangePeriod").value;
   const level = $("rangeLevel").value;
   const condition = $("rangeCondition").value;
+  const stocksOnly = $("rangeScope").value === "stock";
   const t0 = performance.now();
   hideNotice();
-  say("piyasa evreni alınıyor…", "busy");
   document.body.classList.add("busy");
   $("run").disabled = true;
   $("csv").disabled = true;
 
   try {
-    const uni = await post("/api/scan", {
-      market, timeframe:"", all:true, limit:2000,
-      filters:[{ field:"close", op:"greater", value:0 }],
-      columns:["close"], sort:{ by:"volume", order:"desc" },
-    });
-    if (!uni.rows.length) return say("taranacak sembol bulunamadı", "bad");
-
-    const byTicker = Object.fromEntries(uni.rows.map(row => [row.ticker, row]));
-    const parts = chunk(uni.rows.map(row => row.ticker), 30);
-    const hits = [];
-    const failedTickers = new Set();
-    let done = 0;
-    const rangeQuery = { piyasa:market, taranan:0, toplamEvren:uni.total,
-                         periyot:period, seviye:level, koşul:condition };
-    renderRangeProgress([], 0, uni.rows.length, rangeQuery);
-
-    const acceptResult = result => {
-      if (!result.ok) { failedTickers.add(result.ticker); return; }
-      failedTickers.delete(result.ticker);
-      if (!result.signal) return;
-      const source = byTicker[result.ticker];
-      hits.push({
-        ticker:result.ticker, symbol:result.symbol, name:source?.name || "",
-        values:[result.price, result.reference, result.rangeLow, result.rangeHigh,
-                result.distance, result.periodLabel],
-      });
-    };
-
-    const runPart = async part => {
-      try {
-        const res = await post("/api/rangescan", { market, period, level, condition, tickers:part });
-        res.rows.forEach(acceptResult);
-      } catch (err) {
-        if (err.fatal) throw err;
-        part.forEach(ticker => failedTickers.add(ticker));
-      } finally {
-        done += part.length;
-        progress(done, uni.rows.length);
-        say(`range hesaplanıyor… ${done}/${uni.rows.length} · ${hits.length} eşleşme`, "busy");
-        renderRangeProgress(hits, done, uni.rows.length, { ...rangeQuery, taranan:done });
-      }
-    };
-
-    // Üç parça paralel: hız kazanırken veri kaynağını aşırı yüklemiyor.
-    for (let i = 0; i < parts.length; i += 3) {
-      await Promise.all(parts.slice(i, i + 3).map(runPart));
-    }
-
-    // Yahoo geçici olarak bazı sembolleri reddedebiliyor. Yalnız başarısızları
-    // bir kez daha dene; başarılı yüzlerce sembol yeniden istenmez.
-    if (failedTickers.size) {
-      const retryParts = chunk([...failedTickers], 30);
-      say(`${failedTickers.size} sembol yeniden deneniyor…`, "busy");
-      for (let i = 0; i < retryParts.length; i += 2) {
-        await Promise.all(retryParts.slice(i, i + 2).map(async part => {
-          try {
-            const res = await post("/api/rangescan", { market, period, level, condition, tickers:part });
-            res.rows.forEach(acceptResult);
-          } catch (err) {
-            if (err.fatal) throw err;
-          }
-        }));
-        renderRangeProgress(hits, done, uni.rows.length, { ...rangeQuery, taranan:done });
-      }
-    }
-
-    hits.sort((a, b) => condition === "below" ? a.values[4] - b.values[4] : b.values[4] - a.values[4]);
-    render({
-      total:hits.length,
-      columns:RANGE_COLUMNS,
-      rows:hits,
-      query:{ ...rangeQuery, taranan:uni.rows.length },
-    });
-    const failed = failedTickers.size;
-    const failedSymbols = [...failedTickers].map(ticker => ticker.split(":").pop());
-    const truncated = uni.total > uni.rows.length ? ` · ilk ${uni.rows.length}/${uni.total}` : "";
-    const missing = failed ? ` · ${failed} sembolde veri yok` : "";
-    say(`${((performance.now()-t0)/1000).toFixed(1)} sn · ${uni.rows.length} sembol${truncated}${missing}`);
-    if (failed) {
-      const sample = failedSymbols.slice(0, 6).join(", ");
-      const more = failedSymbols.length > 6 ? ` ve ${failedSymbols.length - 6} diğer` : "";
-      showNotice(`${failed} sembolde veri alınamadı (${sample}${more}). Diğer sonuçlar gösteriliyor.`);
-    }
+    if (period === "month") await runMonthRange(market, level, condition, stocksOnly, t0);
+    else await runQuarterRange(market, level, condition, stocksOnly, t0);
   } catch (err) {
     say(err.message, "bad");
     showNotice(err.message, "error");
@@ -910,6 +873,110 @@ async function runRange() {
     $("run").disabled = false;
     $("csv").disabled = false;
   }
+}
+
+async function runMonthRange(market, level, condition, stocksOnly, t0) {
+  say("aylık pivotlar alınıyor…", "busy");
+  const uni = await post("/api/scan", {
+    market, timeframe:"", all:true, limit:2000,
+    filters:[{ field:"close", op:"greater", value:0 }], primaryOnly:true, stocksOnly,
+    columns:["close", ...PIVOT_COLUMNS],
+    sort:{ by:"volume", order:"desc" },
+  });
+  if (!uni.rows.length) return say("taranacak sembol bulunamadı", "bad");
+
+  const periodLabel = previousMonthLabel();
+  const hits = [], missing = [];
+  uni.rows.forEach(row => {
+    const [, pivot, r1, s1] = row.values;
+    if (![pivot, r1, s1].every(Number.isFinite)) return missing.push(row.symbol);
+    const high = 2 * pivot - s1, low = 2 * pivot - r1;
+    if (!(high >= low)) return missing.push(row.symbol);
+    const hit = rangeRow(row, low, high, level, condition, periodLabel);
+    if (hit) hits.push(hit);
+  });
+
+  finishRange(hits, uni, missing, condition, t0, {
+    piyasa:market, taranan:uni.rows.length, toplamEvren:uni.total,
+    periyot:"month", seviye:level, koşul:condition, kapsam:stocksOnly ? "yalnız hisse" : "hisse+fon",
+    referans:periodLabel, kaynak:"TradingView aylık pivot",
+  });
+}
+
+async function runQuarterRange(market, level, condition, stocksOnly, t0) {
+  say("piyasa evreni alınıyor…", "busy");
+  const uni = await post("/api/scan", {
+    market, timeframe:"", all:true, limit:2000,
+    filters:[{ field:"close", op:"greater", value:0 }], primaryOnly:true, stocksOnly,
+    columns:["close"], sort:{ by:"volume", order:"desc" },
+  });
+  if (!uni.rows.length) return say("taranacak sembol bulunamadı", "bad");
+
+  const byTicker = Object.fromEntries(uni.rows.map(row => [row.ticker, row]));
+  const parts = chunk(uni.rows.map(row => row.ticker), 30);
+  const hits = [];
+  const noData = new Set();     // kaynakta geçmişi olmayanlar — tekrar denenmez
+  const unreached = new Set();  // ağ hatası yüzünden hiç cevap alınamayanlar
+  let done = 0;
+  const rangeQuery = { piyasa:market, taranan:0, toplamEvren:uni.total,
+                       periyot:"quarter", seviye:level, koşul:condition, kapsam:stocksOnly ? "yalnız hisse" : "hisse+fon",
+                       kaynak:"Yahoo Finance mumları" };
+  renderRangeProgress([], 0, uni.rows.length, rangeQuery);
+
+  const acceptResult = result => {
+    unreached.delete(result.ticker);
+    if (!result.ok) { noData.add(result.ticker); return; }
+    noData.delete(result.ticker);
+    if (!result.signal) return;
+    const source = byTicker[result.ticker];
+    hits.push({
+      ticker:result.ticker, symbol:result.symbol, name:source?.name || "",
+      values:[result.price, result.reference, result.rangeLow, result.rangeHigh,
+              result.distance, result.periodLabel],
+    });
+  };
+
+  const request = part => post("/api/rangescan",
+    { market, period:"quarter", level, condition, tickers:part });
+
+  const runPart = async part => {
+    try {
+      (await request(part)).rows.forEach(acceptResult);
+    } catch (err) {
+      if (err.fatal) throw err;
+      part.forEach(ticker => unreached.add(ticker));
+    } finally {
+      done += part.length;
+      progress(done, uni.rows.length);
+      say(`range hesaplanıyor… ${done}/${uni.rows.length} · ${hits.length} eşleşme`, "busy");
+      renderRangeProgress(hits, done, uni.rows.length, { ...rangeQuery, taranan:done });
+    }
+  };
+
+  // Üç parça paralel: hız kazanırken veri kaynağını aşırı yüklemiyor.
+  for (let i = 0; i < parts.length; i += 3) {
+    await Promise.all(parts.slice(i, i + 3).map(runPart));
+  }
+
+  // Yalnızca hiç cevap alınamayanlar yeniden denenir. Kaynakta geçmişi
+  // olmayan semboller kalıcı olarak boştur; tekrar istemek boşa tur.
+  if (unreached.size) {
+    const retryParts = chunk([...unreached], 30);
+    say(`${unreached.size} sembol yeniden deneniyor…`, "busy");
+    for (let i = 0; i < retryParts.length; i += 2) {
+      await Promise.all(retryParts.slice(i, i + 2).map(async part => {
+        try {
+          (await request(part)).rows.forEach(acceptResult);
+        } catch (err) {
+          if (err.fatal) throw err;
+        }
+      }));
+      renderRangeProgress(hits, done, uni.rows.length, { ...rangeQuery, taranan:done });
+    }
+  }
+
+  const missing = [...noData, ...unreached].map(ticker => ticker.split(":").pop());
+  finishRange(hits, uni, missing, condition, t0, { ...rangeQuery, taranan:uni.rows.length });
 }
 
 async function run() {
@@ -977,7 +1044,7 @@ function csv() {
     $("market").value = $("rangeMarket").value;
     onMarketChange();
   };
-  ["rangePeriod","rangeLevel","rangeCondition"].forEach(id => $(id).onchange = updateRangeUI);
+  ["rangePeriod","rangeLevel","rangeCondition","rangeScope"].forEach(id => $(id).onchange = updateRangeUI);
   document.querySelectorAll("[data-range-preset]").forEach(button => {
     button.onclick = () => {
       const [period, level, condition] = button.dataset.rangePreset.split("-");
