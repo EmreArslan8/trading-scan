@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/*.py": { "includeFiles": "api/catalog.json" }
+    "api/*.py": { "includeFiles": "api/fields.json" }
   },
   "rewrites": [
     { "source": "/", "destination": "/index.html" }

@@ -5,7 +5,7 @@ import re
 import urllib.request
 from pathlib import Path
 
-CATALOG_PATH = Path(__file__).resolve().parent / "catalog.json"
+CATALOG_PATH = Path(__file__).resolve().parent / "fields.json"
 CATALOG = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 FIELDS = {f["id"]: f for f in CATALOG["fields"]}

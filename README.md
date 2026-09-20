@@ -17,7 +17,7 @@ Python 3.8+ yeterli. **Kurulacak paket yok** — yalnızca standart kütüphane.
 | `api/_core.py` | tarama mantığı; ekrandan gelen kriterleri TradingView sorgusuna çevirir |
 | `api/scan.py` | `POST /api/scan` uç noktası |
 | `api/catalog.py` | `GET /api/catalog` uç noktası |
-| `api/catalog.json` | piyasalar, periyotlar, operatörler, alanlar, hazır taramalar |
+| `api/fields.json` | piyasalar, periyotlar, operatörler, alanlar, hazır taramalar |
 | `public/index.html` | arayüz (tek dosya, çerçeve yok) |
 | `server.py` | yerel geliştirme sunucusu; aynı çekirdeği kullanır |
 | `vercel.json` | Vercel yapılandırması |
@@ -30,7 +30,7 @@ Depo Vercel'e bağlandığında ek ayar gerekmez: `public/` statik olarak,
 
 ## Yeni alan / kriter eklemek
 
-Koda dokunulmaz, `api/catalog.json` içine bir satır eklenir:
+Koda dokunulmaz, `api/fields.json` içine bir satır eklenir:
 
     { "id": "Perf.3M", "label": "3 aylık perf. %", "group": "Fiyat", "tf": false, "fmt": "percent" }
 
@@ -58,4 +58,4 @@ serbest metin sorguya girmez.
   mantığın Python'da yeniden yazılması gerekir; bu uygulama TradingView'in kendi
   hesapladığı kolonları kullanır.
 - Servis TradingView'in resmî olarak belgelenmemiş uç noktasıdır; kolon adları
-  zamanla değişebilir. Değişirse düzeltme `api/catalog.json` içindedir.
+  zamanla değişebilir. Değişirse düzeltme `api/fields.json` içindedir.
