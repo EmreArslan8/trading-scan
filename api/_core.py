@@ -15,6 +15,8 @@ TIMEFRAMES = {t["id"] for t in CATALOG["timeframes"]}
 
 SCANNER = "https://scanner.tradingview.com/{market}/scan"
 MAX_ROWS = 500
+MAX_ALL_ROWS = 2000
+PAGE_SIZE = 500
 
 
 class BadRequest(Exception):
@@ -83,7 +85,9 @@ def build_payload(req):
     sort_by = col(sort.get("by", "volume"), timeframe)
     order = "asc" if sort.get("order") == "asc" else "desc"
 
-    limit = min(int(req.get("limit") or 100), MAX_ROWS)
+    all_rows = bool(req.get("all"))
+    limit = min(int(req.get("limit") or (MAX_ALL_ROWS if all_rows else 100)),
+                MAX_ALL_ROWS if all_rows else MAX_ROWS)
 
     return {
         "filter": [build_filter(r, timeframe) for r in rules],
@@ -92,27 +96,43 @@ def build_payload(req):
         "symbols": {"query": {"types": []}, "tickers": []},
         "columns": columns,
         "sort": {"sortBy": sort_by, "sortOrder": order},
-        "range": [0, limit],
-    }, chosen, market
+        "range": [0, min(limit, PAGE_SIZE)],
+    }, chosen, market, limit, all_rows
 
 
 def run_scan(req):
-    payload, chosen, market = build_payload(req)
-    request = urllib.request.Request(
-        SCANNER.format(market=market),
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-            "Origin": "https://www.tradingview.com",
-            "Referer": "https://www.tradingview.com/",
-        },
-    )
-    with urllib.request.urlopen(request, timeout=25) as resp:
-        body = json.load(resp)
+    payload, chosen, market, limit, all_rows = build_payload(req)
+
+    def fetch_page(start, end):
+        page = dict(payload)
+        page["range"] = [start, end]
+        request = urllib.request.Request(
+            SCANNER.format(market=market),
+            data=json.dumps(page).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+                "Origin": "https://www.tradingview.com",
+                "Referer": "https://www.tradingview.com/",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=25) as resp:
+            return json.load(resp)
+
+    body = fetch_page(0, min(limit, PAGE_SIZE))
+    items = list(body.get("data", []))
+    total = body.get("totalCount", len(items))
+    if all_rows:
+        while len(items) < min(total, limit):
+            start = len(items)
+            page = fetch_page(start, min(start + PAGE_SIZE, limit))
+            fresh = page.get("data", [])
+            if not fresh:
+                break
+            items.extend(fresh)
 
     rows = []
-    for item in body.get("data", []):
+    for item in items[:limit]:
         values = item.get("d", [])
         rows.append({
             "ticker": item.get("s", ""),
@@ -122,8 +142,8 @@ def run_scan(req):
         })
 
     return {
-        "total": body.get("totalCount", len(rows)),
+        "total": total,
         "columns": chosen,
         "rows": rows,
-        "query": payload,
+        "query": {**payload, "range": [0, limit]},
     }

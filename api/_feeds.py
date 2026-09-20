@@ -30,7 +30,18 @@ def yahoo_range(interval, bars):
         if limit is None or bars <= limit:
             return rng
     return YAHOO_RANGE[interval][-1][1]
-SUFFIX = {"turkey": ".IS", "america": "", "germany": ".DE", "uk": ".L"}
+SUFFIX = {
+    "turkey": ".IS", "america": "", "canada": ".TO", "japan": ".T",
+    "india": ".NS", "singapore": ".SI", "hongkong": ".HK",
+    "australia": ".AX", "brazil": ".SA", "germany": ".DE",
+    "france": ".PA", "italy": ".MI", "spain": ".MC", "uk": ".L",
+}
+EXCHANGE_SUFFIX = {
+    "BIST": ".IS", "TSX": ".TO", "TSXV": ".V", "TSE": ".T",
+    "NSE": ".NS", "BSE": ".BO", "SGX": ".SI", "HKEX": ".HK",
+    "ASX": ".AX", "BMFBOVESPA": ".SA", "XETR": ".DE",
+    "EURONEXT": ".PA", "MIL": ".MI", "BME": ".MC", "LSE": ".L",
+}
 
 
 class FeedError(Exception):
@@ -49,12 +60,15 @@ def _get(url, timeout=15):
 
 def feed_symbol(ticker, market):
     """'BIST:THYAO' → veri kaynağındaki sembol."""
+    exchange = ticker.split(":", 1)[0] if ":" in ticker else ""
     plain = ticker.split(":")[-1]
     if market == "crypto":
         return plain
     if market == "forex":
         return plain + "=X"
-    return plain + SUFFIX.get(market, "")
+    if market == "hongkong" and plain.isdigit():
+        plain = plain.zfill(4)
+    return plain + EXCHANGE_SUFFIX.get(exchange, SUFFIX.get(market, ""))
 
 
 def fetch_yahoo(symbol, timeframe, bars):
@@ -72,7 +86,10 @@ def fetch_yahoo(symbol, timeframe, bars):
     if not keep:
         raise FeedError("mum verisi boş")
     keep = keep[-bars:]
-    return {k: [quote[k][i] for i in keep] for k in ("open", "high", "low", "close", "volume")}
+    candles = {k: [quote[k][i] for i in keep] for k in ("open", "high", "low", "close", "volume")}
+    timestamps = result[0].get("timestamp") or []
+    candles["time"] = [timestamps[i] for i in keep]
+    return candles
 
 
 def fetch_binance(symbol, timeframe, bars):
@@ -85,6 +102,7 @@ def fetch_binance(symbol, timeframe, bars):
     if not rows:
         raise FeedError("mum verisi boş")
     return {
+        "time":   [int(r[0]) // 1000 for r in rows],
         "open":   [float(r[1]) for r in rows],
         "high":   [float(r[2]) for r in rows],
         "low":    [float(r[3]) for r in rows],

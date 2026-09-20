@@ -2,6 +2,8 @@
 
 TradingView'in screener servisini kullanan yerel tarama uygulaması.
 Kriterler ekrandan seçilir, sonuçlar tabloya düşer, CSV olarak indirilir.
+Range modu, güncel fiyatı önceki tamamlanmış ayın veya çeyreğin düşük/orta/yüksek
+seviyesiyle karşılaştırarak seçilen piyasa evrenini otomatik tarar.
 
 ## Çalıştırma
 
@@ -17,6 +19,8 @@ Python 3.8+ yeterli. **Kurulacak paket yok** — yalnızca standart kütüphane.
 | `api/_core.py` | tarama mantığı; ekrandan gelen kriterleri TradingView sorgusuna çevirir |
 | `api/scan.py` | `POST /api/scan` uç noktası |
 | `api/pinescan.py` | `POST /api/pinescan` — özel indikatör kodunu çalıştırır |
+| `api/rangescan.py` | `POST /api/rangescan` — önceki ay/çeyrek range seviyelerini tarar |
+| `api/reset.py` | `POST /api/reset` — demo çerezini temizler |
 | `api/_series.py` | seri aritmetiği ve indikatörler (saf Python) |
 | `api/_pine.py` | ifade değerlendirici (AST beyaz liste) |
 | `api/_feeds.py` | mum verisi kaynakları (Yahoo, Binance) |
@@ -99,6 +103,14 @@ atama reddedilir.
 
 Dört saatlik periyot yalnızca kriptoda vardır. Bazı BIST sembollerinde Yahoo
 verisi bulunmaz; bu semboller "veri yok" olarak raporlanır.
+
+## Range taraması
+
+"Range taraması" modunda piyasa, önceki ay/çeyrek, düşük/orta/yüksek seviye ve
+"altında/üstünde" koşulu seçilir. Uygulama önce TradingView'den piyasa evrenini
+alır, sonra günlük mumları takvim dönemlerine ayırır. İçinde bulunulan tamamlanmamış
+dönem referansa katılmaz. Sonuç tablosu güncel fiyatı, referans seviyeyi, range'in
+iki sınırını ve yüzde uzaklığı gösterir.
 
 ## Demo kullanım sınırı
 

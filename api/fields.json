@@ -9,6 +9,34 @@
       "label": "ABD (NASDAQ/NYSE)"
     },
     {
+      "id": "canada",
+      "label": "Kanada (TSX)"
+    },
+    {
+      "id": "japan",
+      "label": "Japonya (TSE)"
+    },
+    {
+      "id": "india",
+      "label": "Hindistan (NSE/BSE)"
+    },
+    {
+      "id": "singapore",
+      "label": "Singapur (SGX)"
+    },
+    {
+      "id": "hongkong",
+      "label": "Hong Kong (HKEX)"
+    },
+    {
+      "id": "australia",
+      "label": "Avustralya (ASX)"
+    },
+    {
+      "id": "brazil",
+      "label": "Brezilya (B3)"
+    },
+    {
       "id": "crypto",
       "label": "Kripto"
     },
@@ -19,6 +47,18 @@
     {
       "id": "germany",
       "label": "Almanya (XETR)"
+    },
+    {
+      "id": "france",
+      "label": "Fransa (Euronext Paris)"
+    },
+    {
+      "id": "italy",
+      "label": "İtalya (Milano)"
+    },
+    {
+      "id": "spain",
+      "label": "İspanya (BME)"
     },
     {
       "id": "uk",

@@ -20,6 +20,7 @@ from _core import CATALOG, BadRequest, run_scan  # noqa: E402
 from _gate import Blocked, check  # noqa: E402
 from _pine import PineError  # noqa: E402
 from pinescan import run_pine_scan  # noqa: E402
+from rangescan import run_range_scan  # noqa: E402
 
 PUBLIC = BASE / "public"
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -63,7 +64,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def do_POST(self):
-        routes = {"/api/scan": run_scan, "/api/pinescan": run_pine_scan}
+        if self.path == "/api/reset":
+            self.send_json(
+                200, {"ok": True},
+                "tvdemo=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
+            )
+            return
+        routes = {"/api/scan": run_scan, "/api/pinescan": run_pine_scan,
+                  "/api/rangescan": run_range_scan}
         action = routes.get(self.path)
         if action is None:
             self.send_error(404)
