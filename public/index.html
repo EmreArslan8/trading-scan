@@ -80,6 +80,17 @@ button { cursor:pointer; width:auto; transition:border-color .15s, color .15s, b
 button:active { transform:translateY(1px); }
 
 /* mod anahtarı */
+/* erişim anahtarı kutusu */
+.keybox { margin-bottom:16px; padding:13px; border:1px solid var(--signal-dim); border-radius:4px;
+  background:rgba(255,176,32,.06); }
+.keybox p { margin:0 0 9px; font-size:12.5px; color:var(--ink); line-height:1.55; }
+.keybox .row2 { display:grid; grid-template-columns:1fr auto; gap:6px; }
+.keybox input { font-family:var(--mono); font-size:12.5px; }
+.keybox button { background:var(--signal); border-color:var(--signal); color:var(--void);
+  font-weight:700; font-size:12.5px; padding:7px 14px; }
+.quota { font-family:var(--mono); font-size:11.5px; color:var(--faint); }
+.quota b { color:var(--signal); font-weight:700; }
+
 .modes { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; margin-bottom:16px;
   border:1px solid var(--edge); border-radius:4px; background:var(--slab-2); }
 .modes button { background:transparent; border-color:transparent; font-size:13px; font-weight:700;
@@ -239,12 +250,21 @@ details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); bac
     <span class="tag">tradingview</span>
   </div>
   <div class="bar-load"></div>
-  <div class="pulse"><span class="dot" id="dot"></span><span id="status">hazır</span></div>
+  <div class="pulse"><span class="dot" id="dot"></span><span id="status">hazır</span>
+    <span class="quota" id="quota"></span></div>
 </header>
 
 <main>
   <aside>
     <button class="fire" id="run">Tara &nbsp;<span style="opacity:.6;font-weight:600">⌘↵</span></button>
+
+    <div class="keybox" id="keybox" hidden>
+      <p id="keymsg">Deneme hakkınız doldu. Devam etmek için erişim anahtarı girin.</p>
+      <div class="row2">
+        <input id="keyInput" placeholder="erişim anahtarı" spellcheck="false">
+        <button id="keySave">Kaydet</button>
+      </div>
+    </div>
 
     <div class="modes">
       <button id="modeSimple" class="on">Hazır kriterler</button>
@@ -314,6 +334,40 @@ details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); bac
 
 <script>
 let CAT=null, FIELD={}, last=null;
+
+/* erişim anahtarı: tarayıcıda saklanır, her isteğe başlık olarak eklenir */
+const KEY_STORE = "tvscan.key";
+const accessKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
+
+function headers() {
+  const h = { "Content-Type": "application/json" };
+  const k = accessKey();
+  if (k) h["X-Access-Key"] = k;
+  return h;
+}
+
+async function post(url, body) {
+  const resp = await fetch(url, { method: "POST", headers: headers(), body: JSON.stringify(body) });
+  const data = await resp.json();
+  if (resp.status === 402 || data.needKey) {
+    $("keybox").hidden = false;
+    $("keymsg").textContent = data.error;
+    $("keyInput").focus();
+    throw new Error(data.error);
+  }
+  if (!resp.ok) throw new Error(data.error || resp.statusText);
+  if (typeof data.scansLeft === "number") showQuota(data.scansLeft);
+  return data;
+}
+
+function showQuota(left) {
+  $("quota").innerHTML = left === null || left === undefined
+    ? "" : `· <b>${left}</b> deneme hakkı kaldı`;
+  if (left === 0) {
+    $("keybox").hidden = false;
+    $("keymsg").textContent = "Son deneme hakkınızı kullandınız. Devam için erişim anahtarı girin.";
+  }
+}
 const $ = id => document.getElementById(id);
 const opt = (v,l) => { const o=document.createElement("option"); o.value=v; o.textContent=l; return o; };
 
@@ -523,12 +577,11 @@ async function runPine() {
 
   try {
     // 1) evren: normal tarayıcı ile sembolleri daralt
-    const uni = await fetch("/api/scan", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ market, timeframe, filters: rules, columns: chosenCols(),
-        sort: { by: $("sortBy").value, order: $("sortOrder").value },
-        limit: Number($("limit").value) || 100 }),
-    }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error); return d; }));
+    const uni = await post("/api/scan", {
+      market, timeframe, filters: rules, columns: chosenCols(),
+      sort: { by: $("sortBy").value, order: $("sortOrder").value },
+      limit: Number($("limit").value) || 100,
+    });
 
     if (!uni.rows.length) { render({ ...uni, rows: [] }); return say("evren boş"); }
 
@@ -539,10 +592,7 @@ async function runPine() {
     let done = 0, failed = 0;
 
     const runPart = async (part) => {
-      const res = await fetch("/api/pinescan", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ market, timeframe, tickers: part, expr, bars: 400 }),
-      }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error); return d; }));
+      const res = await post("/api/pinescan", { market, timeframe, tickers: part, expr, bars: 400 });
 
       res.rows.forEach(r => {
         if (!r.ok) { failed++; return; }
@@ -580,16 +630,11 @@ async function run() {
   $("run").disabled = true;
   const t0 = performance.now();
   try {
-    const resp = await fetch("/api/scan", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        market:$("market").value, timeframe:$("timeframe").value, filters:rules,
-        columns:chosenCols(), sort:{ by:$("sortBy").value, order:$("sortOrder").value },
-        limit:Number($("limit").value) || 100,
-      }),
+    const data = await post("/api/scan", {
+      market:$("market").value, timeframe:$("timeframe").value, filters:rules,
+      columns:chosenCols(), sort:{ by:$("sortBy").value, order:$("sortOrder").value },
+      limit:Number($("limit").value) || 100,
     });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || resp.statusText);
     render(data);
     say(`${Math.round(performance.now() - t0)} ms · ${new Date().toLocaleTimeString("tr-TR")}`);
   } catch (err) {
@@ -633,6 +678,16 @@ function csv() {
     b.onclick = () => { $("expr").value = code; $("expr").focus(); };
     $("snips").appendChild(b);
   });
+  $("keyInput").value = accessKey();
+  $("keySave").onclick = () => {
+    const k = $("keyInput").value.trim();
+    try { k ? localStorage.setItem(KEY_STORE, k) : localStorage.removeItem(KEY_STORE); } catch {}
+    $("keybox").hidden = true;
+    $("quota").textContent = k ? "· anahtarlı erişim" : "";
+    say(k ? "anahtar kaydedildi" : "anahtar silindi");
+  };
+  if (accessKey()) $("quota").textContent = "· anahtarlı erişim";
+
   $("colToggle").onclick = () => $("coltool").classList.toggle("open");
   $("colClear").onclick = () => {
     $("colDrawer").querySelectorAll("input:checked").forEach(c => (c.checked = false));

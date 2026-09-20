@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _core import MARKETS, TIMEFRAMES, BadRequest
+from _gate import Blocked, check
 from _feeds import FeedError, fetch_bars
 from _pine import PineError, compile_expr, evaluate
 from _series import Series, barssince
@@ -82,7 +83,10 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             length = int(self.headers.get("Content-Length") or 0)
+            check(self.headers, spend=False)   # hak /api/scan'de harcanır
             self._send(200, run_pine_scan(json.loads(self.rfile.read(length) or b"{}")))
+        except Blocked as exc:
+            self._send(402, {"error": str(exc), "needKey": True})
         except (BadRequest, PineError) as exc:
             self._send(400, {"error": str(exc)})
         except Exception as exc:

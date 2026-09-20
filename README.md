@@ -100,6 +100,24 @@ atama reddedilir.
 Dört saatlik periyot yalnızca kriptoda vardır. Bazı BIST sembollerinde Yahoo
 verisi bulunmaz; bu semboller "veri yok" olarak raporlanır.
 
+## Demo kullanım sınırı
+
+Yayındaki demo herkese açık olduğundan kullanım sınırlıdır.
+
+| ortam değişkeni | işi |
+|---|---|
+| `FREE_SCANS` | anahtarsız kullanıcının tarama hakkı (varsayılan 3) |
+| `ACCESS_KEYS` | virgülle ayrılmış geçerli erişim anahtarları; anahtarla sınır yok |
+| `DEMO_SECRET` | sayaç çerezini imzalayan gizli anahtar |
+| `ACCESS_ONLY` | `1` yapılırsa anahtarsız erişim tamamen kapanır |
+
+Sayaç, HMAC ile imzalanmış bir çerezde taşınır; kurcalanmış çerez reddedilir.
+Hak `/api/scan` çağrısında harcanır, `/api/pinescan` parçaları ek hak yemez.
+
+**Bunun bir kimlik doğrulama olmadığını bilerek kurgulandı:** çerezi silen ya da
+gizli pencere açan kullanıcı hakkını tazeler. Amaç, demoyu sınırsız kullanmayı
+zahmetli kılmaktır. Erişimi gerçekten kapatmak için `ACCESS_ONLY=1` kullanın.
+
 ## Sınırlar
 
 - Pine Script sunucu tarafında çalıştırılamaz; "Kendi kodum" modu Pine'ın

@@ -17,6 +17,7 @@ BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE / "api"))
 
 from _core import CATALOG, BadRequest, run_scan  # noqa: E402
+from _gate import Blocked, check  # noqa: E402
 from _pine import PineError  # noqa: E402
 from pinescan import run_pine_scan  # noqa: E402
 
@@ -32,10 +33,12 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
-    def send_json(self, status, data):
+    def send_json(self, status, data, cookie=None):
         raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
@@ -68,7 +71,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(length) or b"{}")
-            self.send_json(200, action(req))
+            spend = self.path == "/api/scan"
+            cookie, left = check(self.headers, spend=spend)
+            result = action(req)
+            if spend:
+                result["scansLeft"] = left
+            self.send_json(200, result, cookie)
+        except Blocked as exc:
+            self.send_json(402, {"error": str(exc), "needKey": True})
         except (BadRequest, PineError) as exc:
             self.send_json(400, {"error": str(exc)})
         except urllib.error.HTTPError as exc:

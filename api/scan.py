@@ -10,13 +10,16 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from _core import BadRequest, run_scan
+from _gate import Blocked, check
 
 
 class handler(BaseHTTPRequestHandler):
-    def _send(self, status, data):
+    def _send(self, status, data, cookie=None):
         raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
@@ -25,7 +28,12 @@ class handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length") or 0)
             req = json.loads(self.rfile.read(length) or b"{}")
-            self._send(200, run_scan(req))
+            cookie, left = check(self.headers)
+            result = run_scan(req)
+            result["scansLeft"] = left
+            self._send(200, result, cookie)
+        except Blocked as exc:
+            self._send(402, {"error": str(exc), "needKey": True})
         except BadRequest as exc:
             self._send(400, {"error": str(exc)})
         except urllib.error.HTTPError as exc:
