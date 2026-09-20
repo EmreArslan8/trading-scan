@@ -248,6 +248,7 @@ body.table-focus .icon-btn .collapse-icon { display:block; }
   color:var(--dim); font-size:12.5px; }
 .notice[hidden] { display:none; }
 .notice.error { border-color:rgba(255,92,92,.45); background:rgba(255,92,92,.07); color:#ffc2c2; }
+.notice.info { border-color:var(--edge); background:var(--slab-2); color:var(--dim); }
 .notice span { flex:1; }
 .notice button { padding:5px 9px; color:var(--ink); background:var(--slab-2); font-size:11.5px; }
 
@@ -631,7 +632,9 @@ function say(text, state) {
 
 function showNotice(text, type="warning") {
   $("noticeText").textContent = text;
-  $("notice").className = "notice" + (type === "error" ? " error" : "");
+  $("notice").className = "notice" + (type === "error" ? " error" : type === "info" ? " info" : "");
+  // Bilgi notunda tekrar denemek işe yaramaz: sebep kalıcı, arıza değil.
+  $("noticeRetry").hidden = type === "info";
   $("notice").hidden = false;
 }
 
@@ -828,6 +831,7 @@ function rangeRow(row, low, high, level, condition, periodLabel) {
   const price = row.values[0];
   if (!Number.isFinite(price)) return null;
   const reference = level === "low" ? low : level === "high" ? high : (low + high) / 2;
+  if (!Number.isFinite(reference)) return null;
   const signal = condition === "below" ? price < reference : price > reference;
   if (!signal) return null;
   return {
@@ -841,12 +845,14 @@ function finishRange(hits, uni, missing, condition, t0, query) {
   hits.sort((a, b) => condition === "below" ? a.values[4] - b.values[4] : b.values[4] - a.values[4]);
   render({ total:hits.length, columns:RANGE_COLUMNS, rows:hits, query });
   const truncated = uni.total > uni.rows.length ? ` · ilk ${uni.rows.length}/${uni.total}` : "";
-  const gap = missing.length ? ` · ${missing.length} sembolde veri yok` : "";
+  const gap = missing.length ? ` · ${missing.length} sembol kapsam dışı` : "";
   say(`${((performance.now()-t0)/1000).toFixed(1)} sn · ${uni.rows.length} sembol${truncated}${gap}`);
   if (missing.length) {
     const sample = missing.slice(0, 6).join(", ");
     const more = missing.length > 6 ? ` ve ${missing.length - 6} diğer` : "";
-    showNotice(`${missing.length} sembolde referans dönem verisi yok (${sample}${more}). Diğer sonuçlar gösteriliyor.`);
+    const count = `${missing.length} sembol (${sample}${more})`;
+    showNotice(`${count} karşılaştırmaya girmedi: önceki dönem aralığı henüz oluşmamış. `
+             + `Çoğu yeni kotasyondur ve dönem tamamlanınca kendiliğinden listeye girer.`, "info");
   }
 }
 
@@ -889,9 +895,14 @@ async function runMonthRange(market, level, condition, stocksOnly, t0) {
   const hits = [], missing = [];
   uni.rows.forEach(row => {
     const [, pivot, r1, s1] = row.values;
-    if (![pivot, r1, s1].every(Number.isFinite)) return missing.push(row.symbol);
-    const high = 2 * pivot - s1, low = 2 * pivot - r1;
-    if (!(high >= low)) return missing.push(row.symbol);
+    // Seçilen seviye neyi gerektiriyorsa yalnız o aranır: "en düşük" için
+    // S1 gereksiz, "en yüksek" için R1. Tek bacağı eksik olan sembol
+    // (ör. bölünme sonrası HEDEF) boş yere elenmesin.
+    const low = [pivot, r1].every(Number.isFinite) ? 2 * pivot - r1 : null;
+    const high = [pivot, s1].every(Number.isFinite) ? 2 * pivot - s1 : null;
+    const needed = level === "low" ? [low] : level === "high" ? [high] : [low, high];
+    if (needed.some(v => v === null)) return missing.push(row.symbol);
+    if (low !== null && high !== null && high < low) return missing.push(row.symbol);
     const hit = rangeRow(row, low, high, level, condition, periodLabel);
     if (hit) hits.push(hit);
   });
