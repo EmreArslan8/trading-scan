@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Yerel geliştirme sunucusu.
+
+    python3 server.py        # http://127.0.0.1:8777
+
+Vercel'de aynı işi api/scan.py ve api/catalog.py fonksiyonları görür;
+tarama mantığı tek yerde, api/_core.py içindedir.
+"""
+
+import json
+import sys
+import urllib.error
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE / "api"))
+
+from _core import CATALOG, BadRequest, run_scan  # noqa: E402
+
+PUBLIC = BASE / "public"
+TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
+         ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
+         ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon"}
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "TVScreener/1.0"
+
+    def log_message(self, fmt, *args):
+        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+
+    def send_json(self, status, data):
+        raw = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_GET(self):
+        if self.path.startswith("/api/catalog"):
+            self.send_json(200, CATALOG)
+            return
+
+        name = "index.html" if self.path in ("/", "") else self.path.lstrip("/").split("?")[0]
+        path = (PUBLIC / name).resolve()
+        if not path.is_file() or PUBLIC not in path.parents:
+            self.send_error(404)
+            return
+
+        raw = path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", TYPES.get(path.suffix, "application/octet-stream"))
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_POST(self):
+        if self.path != "/api/scan":
+            self.send_error(404)
+            return
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            req = json.loads(self.rfile.read(length) or b"{}")
+            self.send_json(200, run_scan(req))
+        except BadRequest as exc:
+            self.send_json(400, {"error": str(exc)})
+        except urllib.error.HTTPError as exc:
+            self.send_json(502, {"error": f"TradingView {exc.code}: {exc.reason}"})
+        except urllib.error.URLError as exc:
+            self.send_json(502, {"error": f"bağlanılamadı: {exc.reason}"})
+        except Exception as exc:  # son çare
+            self.send_json(500, {"error": f"{type(exc).__name__}: {exc}"})
+
+
+def main():
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8777
+    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"TradingView tarayıcı hazır → http://127.0.0.1:{port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nkapatılıyor")
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()

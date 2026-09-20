@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarayıcı Terminali</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void:#0a0c10; --slab:#11141b; --slab-2:#161a23; --edge:#232936; --edge-hot:#333c4e;
+  --ink:#eef1f6; --dim:#a8b2c4; --faint:#8791a3;
+  --signal:#ffb020; --signal-dim:#7a5310;
+  --up:#3ddc97; --down:#ff5c5c; --wire:#4aa8ff;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;
+  --sans:"Archivo",-apple-system,sans-serif;
+  --serif:"Instrument Serif",Georgia,serif;
+}
+* { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0; background:var(--void); color:var(--ink);
+  font-family:var(--sans); font-size:14px; font-weight:500; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(900px 400px at 12% -8%, rgba(255,176,32,.07), transparent 65%),
+    radial-gradient(700px 380px at 92% 0%, rgba(74,168,255,.06), transparent 60%);
+  background-attachment:fixed;
+}
+body::after {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:99; opacity:.035;
+  background-image:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px);
+  mix-blend-mode:overlay;
+}
+
+/* ── başlık ───────────────────────────────────────────── */
+header {
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  padding:14px 22px; border-bottom:1px solid var(--edge);
+  background:rgba(10,12,16,.82); backdrop-filter:blur(14px);
+}
+.brand { display:flex; align-items:baseline; gap:10px; }
+.brand h1 { margin:0; font-family:var(--serif); font-size:26px; font-weight:400; letter-spacing:.2px; }
+.brand h1 em { font-style:italic; color:var(--signal); }
+.brand .tag {
+  font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--dim); border:1px solid var(--edge); border-radius:2px; padding:2px 6px;
+}
+.pulse { margin-left:auto; display:flex; align-items:center; gap:8px;
+  font-family:var(--mono); font-size:12.5px; font-weight:500; color:var(--dim); }
+.dot { width:6px; height:6px; border-radius:50%; background:var(--up);
+  box-shadow:0 0 0 0 rgba(61,220,151,.6); animation:beat 2.4s ease-out infinite; }
+.dot.busy { background:var(--signal); animation-duration:.9s; }
+.dot.bad  { background:var(--down); animation:none; }
+@keyframes beat { 0%{box-shadow:0 0 0 0 rgba(61,220,151,.5)} 70%{box-shadow:0 0 0 7px rgba(61,220,151,0)} 100%{box-shadow:0 0 0 0 rgba(61,220,151,0)} }
+
+/* ── yerleşim ─────────────────────────────────────────── */
+main { display:grid; grid-template-columns:355px minmax(0,1fr); gap:0; min-height:calc(100vh - 59px); }
+aside { border-right:1px solid var(--edge); padding:18px; background:linear-gradient(180deg,var(--slab),rgba(17,20,27,.35)); }
+section.results { padding:18px 22px 40px; min-width:0; }
+
+.legend {
+  font-family:var(--sans); font-size:12.5px; font-weight:700; letter-spacing:.02em;
+  color:var(--dim); margin:0 0 10px; display:flex; align-items:center; gap:9px;
+}
+.legend::after { content:""; flex:1; height:1px; background:var(--edge); }
+
+/* ── kontroller ───────────────────────────────────────── */
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.field label { display:block; font-size:12px; font-weight:600; color:var(--dim); margin-bottom:4px; }
+select, input, button { font-family:var(--sans); font-size:13.5px; font-weight:500; color:var(--ink);
+  background:var(--slab-2); border:1px solid var(--edge); border-radius:3px; padding:7px 8px; width:100%; }
+input, select.num { font-family:var(--mono); }
+select { appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 13px) 50%,calc(100% - 8px) 50%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:26px; }
+select:focus, input:focus { outline:none; border-color:var(--signal); box-shadow:0 0 0 2px rgba(255,176,32,.13); }
+button { cursor:pointer; width:auto; transition:border-color .15s, color .15s, background .15s, transform .08s; }
+button:active { transform:translateY(1px); }
+
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  font-family:var(--sans); font-size:12.5px; font-weight:600; padding:6px 10px;
+  border:1px solid var(--edge); border-radius:2px; background:transparent; color:var(--dim);
+}
+.chip:hover { border-color:var(--signal-dim); color:var(--signal); }
+
+/* ── kriter satırları ─────────────────────────────────── */
+.rules { display:flex; flex-direction:column; gap:7px; margin-bottom:9px; }
+.rule {
+  position:relative; padding:9px 9px 9px 13px; border:1px solid var(--edge); border-radius:3px;
+  background:var(--slab-2); display:grid; grid-template-columns:1fr auto; gap:6px;
+  animation:slip .22s cubic-bezier(.2,.8,.3,1) both;
+}
+@keyframes slip { from{opacity:0; transform:translateX(-7px)} to{opacity:1; transform:none} }
+.rule::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--signal); opacity:.55; }
+.rule .line { display:grid; grid-template-columns:1fr 84px; gap:6px; }
+.rule .vals { display:grid; grid-template-columns:1fr; gap:6px; }
+.rule .vals.two { grid-template-columns:1fr 1fr; }
+.rule .kill { align-self:start; width:26px; height:26px; padding:0; color:var(--faint);
+  background:transparent; border-color:transparent; font-size:14px; line-height:1; }
+.rule .kill:hover { color:var(--down); border-color:var(--edge); }
+.rule .mode { grid-column:1/-1; display:flex; align-items:center; gap:7px;
+  font-size:12px; font-weight:500; color:var(--dim); cursor:pointer; user-select:none; }
+.rule .mode input { width:auto; accent-color:var(--signal); }
+.rule[data-col="1"]::before { background:var(--wire); }
+
+.add { width:100%; border-style:dashed; color:var(--dim); font-size:13px; font-weight:600; padding:9px; }
+.add:hover { color:var(--signal); border-color:var(--signal-dim); }
+
+/* kolon çekmecesi (sonuç tarafında) */
+.coltool { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:11px;
+  padding:9px 11px; border:1px solid var(--edge); border-radius:4px; background:var(--slab); }
+.coltool .toggle { font-size:13px; font-weight:700; color:var(--ink); background:var(--slab-2);
+  border-color:var(--edge-hot); padding:7px 12px; display:flex; align-items:center; gap:7px; }
+.coltool .toggle:hover { border-color:var(--signal); color:var(--signal); }
+.coltool .toggle .n { font-family:var(--mono); font-size:11.5px; color:var(--void);
+  background:var(--signal); border-radius:999px; padding:1px 7px; font-weight:700; }
+.coltool .toggle .caret { color:var(--dim); font-size:10px; transition:transform .18s; }
+.coltool.open .toggle .caret { transform:rotate(180deg); }
+.coltool .live { display:flex; flex-wrap:wrap; gap:5px; flex:1; min-width:0; }
+.coltool .live span { font-family:var(--mono); font-size:11.5px; color:var(--dim);
+  border:1px solid var(--edge); border-radius:999px; padding:3px 9px; }
+.coltool .clear { font-size:12px; font-weight:600; color:var(--faint); background:transparent;
+  border-color:transparent; padding:6px 8px; }
+.coltool .clear:hover { color:var(--down); }
+
+.coldrawer { display:none; margin:-4px 0 14px; padding:14px; border:1px solid var(--edge);
+  border-radius:4px; background:var(--slab); animation:drop .18s ease both; }
+.coltool.open + .coldrawer { display:block; }
+@keyframes drop { from{opacity:0; transform:translateY(-5px)} to{opacity:1; transform:none} }
+.coldrawer .grp { margin-bottom:12px; }
+.coldrawer .grp:last-child { margin-bottom:0; }
+.coldrawer .grp h4 { margin:0 0 7px; font-size:12px; font-weight:700; color:var(--dim); }
+.colpicker { display:flex; flex-wrap:wrap; gap:5px; }
+.pick { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--dim);
+  border:1px solid var(--edge); border-radius:999px; padding:4px 9px; cursor:pointer; white-space:nowrap; }
+.pick input { display:none; }
+.pick:has(input:checked) { color:var(--void); background:var(--signal); border-color:var(--signal); font-weight:600; }
+.pick:hover { border-color:var(--edge-hot); }
+
+/* ilerleme çubuğu */
+.bar-load { position:absolute; left:0; right:0; bottom:-1px; height:2px; overflow:hidden; opacity:0;
+  transition:opacity .2s; }
+body.busy .bar-load { opacity:1; }
+.bar-load::before { content:""; position:absolute; inset:0; width:38%;
+  background:linear-gradient(90deg,transparent,var(--signal),transparent);
+  animation:sweep 1.05s cubic-bezier(.5,0,.5,1) infinite; }
+@keyframes sweep { from{transform:translateX(-100%)} to{transform:translateX(365%)} }
+
+.fire {
+  position:sticky; top:71px; z-index:10; width:100%; padding:13px; margin-bottom:18px;
+  font-family:var(--sans); font-weight:700; font-size:15px; letter-spacing:.04em;
+  color:var(--void); background:var(--signal); border-color:var(--signal);
+  box-shadow:0 6px 18px rgba(10,12,16,.65);
+}
+.fire:hover { box-shadow:0 0 22px rgba(255,176,32,.28); }
+.fire:disabled { opacity:.5; cursor:wait; }
+
+/* ── sonuçlar ─────────────────────────────────────────── */
+.readout { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.count { font-family:var(--serif); font-size:40px; line-height:1; }
+.count small { font-size:13px; font-weight:600; color:var(--dim); margin-left:10px; }
+.readout .spacer { flex:1; }
+.readout button { font-size:12.5px; font-weight:600; color:var(--dim); background:transparent; padding:8px 14px; }
+.readout button:hover { color:var(--signal); border-color:var(--signal-dim); }
+
+.tblwrap { border:1px solid var(--edge); border-radius:4px; overflow:auto; max-height:calc(100vh - 210px); background:var(--slab); }
+.tblwrap::-webkit-scrollbar { width:10px; height:10px; }
+.tblwrap::-webkit-scrollbar-thumb { background:var(--edge); border-radius:5px; }
+table { width:100%; border-collapse:separate; border-spacing:0; }
+th, td { padding:0 13px; height:33px; text-align:right; white-space:nowrap; }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align:left; }
+th {
+  position:sticky; top:0; z-index:3; background:var(--slab-2);
+  font-family:var(--sans); font-size:12px; letter-spacing:.01em;
+  color:var(--dim); font-weight:700; border-bottom:1px solid var(--edge);
+}
+td { font-family:var(--mono); font-size:13.5px; font-weight:500; border-bottom:1px solid rgba(35,41,54,.6); color:var(--ink); }
+td.name { font-family:var(--sans); color:var(--dim); font-size:13px;
+  max-width:230px; overflow:hidden; text-overflow:ellipsis; }
+tbody tr { animation:fade .3s both; }
+tbody tr:nth-child(-n+24) { animation-delay:calc(var(--i) * 11ms); }
+@keyframes fade { from{opacity:0; transform:translateY(3px)} to{opacity:1; transform:none} }
+tbody tr:hover td { background:rgba(255,176,32,.05); }
+tbody tr:hover td:first-child { box-shadow:inset 2px 0 0 var(--signal); }
+.sym { color:var(--ink); font-weight:700; text-decoration:none; letter-spacing:.02em; }
+.sym:hover { color:var(--signal); }
+.rank { color:var(--faint); font-size:11.5px; margin-right:9px; }
+.up { color:var(--up); } .down { color:var(--down); }
+
+.empty { padding:64px 20px; text-align:center; color:var(--faint); }
+.empty p { font-family:var(--serif); font-size:24px; font-style:italic; color:var(--dim); margin:0 0 6px; }
+.empty span { font-size:13px; font-weight:600; color:var(--dim); }
+.err { color:var(--down); font-family:var(--mono); font-size:11.5px; }
+
+details.raw { margin-top:12px; }
+details.raw summary { font-size:12.5px; font-weight:600; color:var(--dim); cursor:pointer; }
+details.raw pre { font-family:var(--mono); font-size:12px; color:var(--dim); background:var(--slab);
+  border:1px solid var(--edge); border-radius:3px; padding:11px; overflow:auto; max-height:240px; }
+
+@media (max-width:900px) {
+  main { grid-template-columns:1fr; }
+  aside { border-right:none; border-bottom:1px solid var(--edge); }
+  .tblwrap { max-height:none; }
+  section.results { padding:16px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Tarayıcı <em>Terminali</em></h1>
+    <span class="tag">tradingview</span>
+  </div>
+  <div class="bar-load"></div>
+  <div class="pulse"><span class="dot" id="dot"></span><span id="status">hazır</span></div>
+</header>
+
+<main>
+  <aside>
+    <button class="fire" id="run">Tara &nbsp;<span style="opacity:.6;font-weight:600">⌘↵</span></button>
+
+    <p class="legend">hazır taramalar</p>
+    <div class="chips" id="presets"></div>
+
+    <p class="legend" style="margin-top:20px">kapsam</p>
+    <div class="grid2">
+      <div class="field"><label>piyasa</label><select id="market"></select></div>
+      <div class="field"><label>periyot</label><select id="timeframe"></select></div>
+      <div class="field"><label>sırala</label><select id="sortBy" class="num"></select></div>
+      <div class="field"><label>yön / adet</label>
+        <div style="display:grid;grid-template-columns:1fr 62px;gap:6px">
+          <select id="sortOrder"><option value="desc">↓ azalan</option><option value="asc">↑ artan</option></select>
+          <input id="limit" value="100" inputmode="numeric">
+        </div>
+      </div>
+    </div>
+
+    <p class="legend" style="margin-top:20px">kriterler</p>
+    <div class="rules" id="rules"></div>
+    <button class="add" id="addRule">+ kriter ekle</button>
+
+  </aside>
+
+  <section class="results">
+    <div class="readout">
+      <div><span class="count" id="count">—</span><small id="countNote">sonuç bekleniyor</small></div>
+      <div class="spacer"></div>
+      <button id="csv">csv indir</button>
+    </div>
+    <div class="coltool" id="coltool">
+      <button class="toggle" id="colToggle">Kolonlar <span class="n" id="colCount">0</span><span class="caret">▼</span></button>
+      <div class="live" id="colLive"></div>
+      <button class="clear" id="colClear">sıfırla</button>
+    </div>
+    <div class="coldrawer" id="colDrawer"></div>
+
+    <div class="tblwrap" id="tblwrap">
+      <div class="empty" id="empty">
+        <p>Kriterleri kur, tetiği çek.</p>
+        <span>soldaki panelden başla</span>
+      </div>
+      <table id="table" hidden><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+    </div>
+    <details class="raw"><summary>gönderilen sorgu</summary><pre id="queryDump">—</pre></details>
+  </section>
+</main>
+
+<script>
+let CAT=null, FIELD={}, last=null;
+const $ = id => document.getElementById(id);
+const opt = (v,l) => { const o=document.createElement("option"); o.value=v; o.textContent=l; return o; };
+
+/* seçili piyasada anlamlı olan alanlar (ör. F/K kriptoda yok) */
+const usable = () => CAT.fields.filter(f => !f.markets || f.markets.includes($("market").value));
+
+function fillFields(sel, keep) {
+  const want = keep ?? sel.value;
+  sel.innerHTML = "";
+  const groups = {};
+  usable().forEach(f => (groups[f.group] ||= []).push(f));
+  for (const [name, list] of Object.entries(groups)) {
+    const g = document.createElement("optgroup"); g.label = name;
+    list.forEach(f => g.appendChild(opt(f.id, f.label)));
+    sel.appendChild(g);
+  }
+  if (want && usable().some(f => f.id === want)) sel.value = want;
+  return sel;
+}
+
+function addRule(rule) {
+  rule = rule || { field:"RSI", op:"less", value:30 };
+  const box = document.createElement("div");
+  box.className = "rule";
+
+  const line = document.createElement("div"); line.className = "line";
+  const field = fillFields(document.createElement("select"), rule.field);
+  const op = document.createElement("select"); op.className = "num";
+  CAT.operators.forEach(o => op.appendChild(opt(o.id, o.label)));
+  op.value = rule.op;
+  line.append(field, op);
+
+  const vals = document.createElement("div"); vals.className = "vals";
+  const val  = Object.assign(document.createElement("input"), { placeholder:"değer  (1.5M olur)" });
+  const val2 = Object.assign(document.createElement("input"), { placeholder:"üst sınır" });
+  const colVal = fillFields(document.createElement("select"), rule.isColumn ? rule.value : "EMA50");
+  colVal.classList.add("num");
+  vals.append(val, val2, colVal);
+
+  const isCol = Object.assign(document.createElement("input"), { type:"checkbox", checked:!!rule.isColumn });
+  const mode = document.createElement("label"); mode.className = "mode";
+  mode.append(isCol, document.createTextNode("başka bir alanla karşılaştır"));
+
+  const kill = Object.assign(document.createElement("button"), { className:"kill", textContent:"×", title:"kaldır" });
+  kill.onclick = () => { box.style.opacity = 0; setTimeout(() => box.remove(), 120); };
+
+  function sync() {
+    const col = isCol.checked;
+    const arity = CAT.operators.find(o => o.id === op.value).arity;
+    box.dataset.col = col ? "1" : "0";
+    colVal.hidden = !col; val.hidden = col; val2.hidden = col || arity !== 2;
+    vals.classList.toggle("two", !col && arity === 2);
+  }
+  isCol.onchange = sync; op.onchange = sync;
+
+  if (!rule.isColumn) { val.value = rule.value ?? ""; val2.value = rule.value2 ?? ""; }
+
+  box.append(line, kill, vals, mode);
+  $("rules").appendChild(box);
+  sync();
+
+  box._read = () => ({
+    field: field.value, op: op.value, isColumn: isCol.checked,
+    value: isCol.checked ? colVal.value : val.value, value2: val2.value,
+  });
+  box._refresh = () => { fillFields(field); fillFields(colVal); };
+}
+
+function buildCols(selected) {
+  const drawer = $("colDrawer");
+  drawer.innerHTML = "";
+  const groups = {};
+  usable().forEach(f => (groups[f.group] ||= []).push(f));
+  for (const [name, list] of Object.entries(groups)) {
+    const g = document.createElement("div"); g.className = "grp";
+    const h = document.createElement("h4"); h.textContent = name;
+    const wrap = document.createElement("div"); wrap.className = "colpicker";
+    list.forEach(f => {
+      const l = document.createElement("label"); l.className = "pick";
+      const c = Object.assign(document.createElement("input"),
+        { type:"checkbox", value:f.id, checked:selected.includes(f.id) });
+      c.onchange = colSummary;
+      l.append(c, document.createTextNode(f.label));
+      wrap.appendChild(l);
+    });
+    g.append(h, wrap);
+    drawer.appendChild(g);
+  }
+  colSummary();
+}
+
+const chosenCols = () => [...$("colDrawer").querySelectorAll("input:checked")].map(c => c.value);
+
+function colSummary() {
+  const picked = chosenCols();
+  $("colCount").textContent = picked.length;
+  $("colLive").innerHTML = picked.length
+    ? picked.slice(0, 8).map(c => `<span>${FIELD[c]?.label || c}</span>`).join("") +
+      (picked.length > 8 ? `<span>+${picked.length - 8}</span>` : "")
+    : `<span>kolon seçilmedi</span>`;
+}
+
+function applyPreset(p) {
+  $("market").value = p.market;
+  $("timeframe").value = p.timeframe || "";
+  fillFields($("sortBy"), p.sort?.by || "volume");
+  $("sortOrder").value = p.sort?.order || "desc";
+  $("rules").innerHTML = "";
+  p.filters.forEach(addRule);
+  buildCols(p.columns || ["close","change","volume"]);
+}
+
+function onMarketChange() {
+  const keepCols = chosenCols();
+  fillFields($("sortBy"));
+  [...$("rules").children].forEach(r => r._refresh());
+  buildCols(keepCols);
+}
+
+function fmt(v, kind) {
+  if (v === null || v === undefined || v === "") return "·";
+  if (typeof v !== "number") return v;
+  if (kind === "percent") return (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+  if (kind === "int") {
+    const a = Math.abs(v);
+    if (a >= 1e9) return (v/1e9).toFixed(2) + " Mr";
+    if (a >= 1e6) return (v/1e6).toFixed(2) + " M";
+    if (a >= 1e3) return (v/1e3).toFixed(1) + " B";
+    return Math.round(v).toString();
+  }
+  if (Math.abs(v) >= 1000) return v.toLocaleString("tr-TR", { maximumFractionDigits:2 });
+  return Number(v.toPrecision(6)).toString();
+}
+
+function say(text, state) {
+  $("status").textContent = text;
+  $("dot").className = "dot" + (state ? " " + state : "");
+}
+
+function render(res) {
+  last = res;
+  $("empty").hidden = true;
+  $("table").hidden = false;
+  $("count").textContent = res.total.toLocaleString("tr-TR");
+  $("countNote").textContent = `eşleşme · ${res.rows.length} satır gösteriliyor`;
+  $("queryDump").textContent = JSON.stringify(res.query, null, 2);
+
+  $("thead").innerHTML = "<tr><th>sembol</th><th>isim</th>" +
+    res.columns.map(c => `<th>${FIELD[c]?.label || c}</th>`).join("") + "</tr>";
+
+  $("tbody").innerHTML = res.rows.map((r, i) => {
+    const cells = r.values.map((v, k) => {
+      const f = FIELD[res.columns[k]];
+      const cls = f?.fmt === "percent" && typeof v === "number" ? (v > 0 ? "up" : v < 0 ? "down" : "") : "";
+      return `<td class="${cls}">${fmt(v, f?.fmt)}</td>`;
+    }).join("");
+    const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(r.ticker);
+    return `<tr style="--i:${i}"><td><span class="rank">${String(i+1).padStart(2,"0")}</span>` +
+      `<a class="sym" href="${url}" target="_blank" rel="noopener">${r.symbol}</a></td>` +
+      `<td class="name">${(r.name || "").replace(/</g,"&lt;")}</td>${cells}</tr>`;
+  }).join("");
+}
+
+async function run() {
+  const rules = [...$("rules").children].map(b => b._read());
+  if (!rules.length) return say("en az bir kriter gerekir", "bad");
+
+  say("taranıyor…", "busy");
+  document.body.classList.add("busy");
+  $("run").disabled = true;
+  const t0 = performance.now();
+  try {
+    const resp = await fetch("/api/scan", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        market:$("market").value, timeframe:$("timeframe").value, filters:rules,
+        columns:chosenCols(), sort:{ by:$("sortBy").value, order:$("sortOrder").value },
+        limit:Number($("limit").value) || 100,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || resp.statusText);
+    render(data);
+    say(`${Math.round(performance.now() - t0)} ms · ${new Date().toLocaleTimeString("tr-TR")}`);
+  } catch (err) {
+    say(err.message, "bad");
+  } finally {
+    document.body.classList.remove("busy");
+    $("run").disabled = false;
+  }
+}
+
+function csv() {
+  if (!last) return say("önce tarama yap", "bad");
+  const head = ["Sembol","İsim", ...last.columns.map(c => FIELD[c]?.label || c)];
+  const body = [head, ...last.rows.map(r => [r.symbol, r.name, ...r.values])]
+    .map(cols => cols.map(c => `"${String(c ?? "").replace(/"/g,'""')}"`).join(","));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + body.join("\n")], { type:"text/csv;charset=utf-8" }));
+  a.download = `tarama-${new Date().toISOString().slice(0,16).replace(":","")}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+(async function init() {
+  CAT = await (await fetch("/api/catalog")).json();
+  CAT.fields.forEach(f => (FIELD[f.id] = f));
+  CAT.markets.forEach(m => $("market").appendChild(opt(m.id, m.label)));
+  CAT.timeframes.forEach(t => $("timeframe").appendChild(opt(t.id, t.label)));
+  CAT.presets.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = p.name;
+    b.onclick = () => applyPreset(p);
+    $("presets").appendChild(b);
+  });
+  applyPreset(CAT.presets[0]);
+  $("market").onchange = onMarketChange;
+  $("colToggle").onclick = () => $("coltool").classList.toggle("open");
+  $("colClear").onclick = () => {
+    $("colDrawer").querySelectorAll("input:checked").forEach(c => (c.checked = false));
+    colSummary();
+  };
+  $("addRule").onclick = () => addRule();
+  $("run").onclick = run;
+  $("csv").onclick = csv;
+  addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") run(); });
+})();
+</script>
+</body>
+</html>

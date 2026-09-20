@@ -1,0 +1,645 @@
+{
+  "markets": [
+    {
+      "id": "turkey",
+      "label": "BIST (Türkiye)"
+    },
+    {
+      "id": "america",
+      "label": "ABD (NASDAQ/NYSE)"
+    },
+    {
+      "id": "crypto",
+      "label": "Kripto"
+    },
+    {
+      "id": "forex",
+      "label": "Forex"
+    },
+    {
+      "id": "germany",
+      "label": "Almanya (XETR)"
+    },
+    {
+      "id": "uk",
+      "label": "İngiltere (LSE)"
+    }
+  ],
+  "timeframes": [
+    {
+      "id": "",
+      "label": "1 Gün"
+    },
+    {
+      "id": "|1",
+      "label": "1 Dakika"
+    },
+    {
+      "id": "|5",
+      "label": "5 Dakika"
+    },
+    {
+      "id": "|15",
+      "label": "15 Dakika"
+    },
+    {
+      "id": "|60",
+      "label": "1 Saat"
+    },
+    {
+      "id": "|240",
+      "label": "4 Saat"
+    },
+    {
+      "id": "|1W",
+      "label": "1 Hafta"
+    },
+    {
+      "id": "|1M",
+      "label": "1 Ay"
+    }
+  ],
+  "operators": [
+    {
+      "id": "greater",
+      "label": ">",
+      "arity": 1
+    },
+    {
+      "id": "egreater",
+      "label": ">=",
+      "arity": 1
+    },
+    {
+      "id": "less",
+      "label": "<",
+      "arity": 1
+    },
+    {
+      "id": "eless",
+      "label": "<=",
+      "arity": 1
+    },
+    {
+      "id": "equal",
+      "label": "=",
+      "arity": 1
+    },
+    {
+      "id": "nequal",
+      "label": "≠",
+      "arity": 1
+    },
+    {
+      "id": "in_range",
+      "label": "arasında",
+      "arity": 2
+    },
+    {
+      "id": "crosses",
+      "label": "keser",
+      "arity": 1
+    },
+    {
+      "id": "crosses_above",
+      "label": "yukarı keser",
+      "arity": 1
+    },
+    {
+      "id": "crosses_below",
+      "label": "aşağı keser",
+      "arity": 1
+    }
+  ],
+  "fields": [
+    {
+      "id": "close",
+      "label": "Fiyat",
+      "group": "Fiyat",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "change",
+      "label": "Değişim %",
+      "group": "Fiyat",
+      "tf": true,
+      "fmt": "percent"
+    },
+    {
+      "id": "change_abs",
+      "label": "Değişim (mutlak)",
+      "group": "Fiyat",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "high",
+      "label": "Yüksek",
+      "group": "Fiyat",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "low",
+      "label": "Düşük",
+      "group": "Fiyat",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "gap",
+      "label": "Gap %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "Perf.W",
+      "label": "Haftalık perf. %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "Perf.1M",
+      "label": "Aylık perf. %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "Perf.Y",
+      "label": "Yıllık perf. %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "price_52_week_high",
+      "label": "52 hafta en yüksek",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "price"
+    },
+    {
+      "id": "price_52_week_low",
+      "label": "52 hafta en düşük",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "price"
+    },
+    {
+      "id": "Perf.3M",
+      "label": "3 aylık perf. %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "Perf.YTD",
+      "label": "Yılbaşından beri %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "Volatility.D",
+      "label": "Volatilite %",
+      "group": "Fiyat",
+      "tf": false,
+      "fmt": "percent"
+    },
+    {
+      "id": "volume",
+      "label": "Hacim",
+      "group": "Hacim",
+      "tf": true,
+      "fmt": "int"
+    },
+    {
+      "id": "average_volume_10d_calc",
+      "label": "Ort. hacim 10g",
+      "group": "Hacim",
+      "tf": false,
+      "fmt": "int"
+    },
+    {
+      "id": "average_volume_30d_calc",
+      "label": "Ort. hacim 30g",
+      "group": "Hacim",
+      "tf": false,
+      "fmt": "int"
+    },
+    {
+      "id": "relative_volume_10d_calc",
+      "label": "Bağıl hacim",
+      "group": "Hacim",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "RSI",
+      "label": "RSI (14)",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "RSI7",
+      "label": "RSI (7)",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "Stoch.K",
+      "label": "Stokastik %K",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "Stoch.D",
+      "label": "Stokastik %D",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "CCI20",
+      "label": "CCI (20)",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "ADX",
+      "label": "ADX",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "ATR",
+      "label": "ATR",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "MACD.macd",
+      "label": "MACD",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "MACD.signal",
+      "label": "MACD sinyal",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "Mom",
+      "label": "Momentum",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "BB.upper",
+      "label": "Bollinger üst",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "BB.lower",
+      "label": "Bollinger alt",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "Recommend.All",
+      "label": "TV özet sinyal",
+      "group": "İndikatör",
+      "tf": true,
+      "fmt": "num"
+    },
+    {
+      "id": "EMA20",
+      "label": "EMA 20",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "EMA50",
+      "label": "EMA 50",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "EMA200",
+      "label": "EMA 200",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "SMA20",
+      "label": "SMA 20",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "SMA50",
+      "label": "SMA 50",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "SMA200",
+      "label": "SMA 200",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "VWAP",
+      "label": "VWAP",
+      "group": "Ortalama",
+      "tf": true,
+      "fmt": "price"
+    },
+    {
+      "id": "market_cap_basic",
+      "label": "Piyasa değeri",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "int",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "price_earnings_ttm",
+      "label": "F/K",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "num",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "price_book_ratio",
+      "label": "PD/DD",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "num",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "earnings_per_share_basic_ttm",
+      "label": "EPS",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "num",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "debt_to_equity",
+      "label": "Borç/Özkaynak",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "num",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "number_of_employees",
+      "label": "Çalışan sayısı",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "int",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "dividends_yield",
+      "label": "Temettü verimi %",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "percent",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "return_on_equity",
+      "label": "Özkaynak karlılığı %",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "percent",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "gross_margin",
+      "label": "Brüt marj %",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "percent",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "net_income",
+      "label": "Net kar",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "int",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "total_revenue",
+      "label": "Toplam gelir",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "int",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "current_ratio",
+      "label": "Cari oran",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "num",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    },
+    {
+      "id": "float_shares_percent_current",
+      "label": "Halka açıklık %",
+      "group": "Temel",
+      "tf": false,
+      "fmt": "percent",
+      "markets": [
+        "turkey",
+        "america",
+        "germany",
+        "uk"
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Aşırı satım + hacim",
+      "market": "turkey",
+      "timeframe": "",
+      "filters": [
+        {
+          "field": "RSI",
+          "op": "less",
+          "value": 30
+        },
+        {
+          "field": "volume",
+          "op": "greater",
+          "value": 1000000
+        }
+      ],
+      "columns": [
+        "close",
+        "change",
+        "volume",
+        "RSI"
+      ],
+      "sort": {
+        "by": "volume",
+        "order": "desc"
+      }
+    },
+    {
+      "name": "Trend: fiyat > EMA50 > EMA200",
+      "market": "turkey",
+      "timeframe": "",
+      "filters": [
+        {
+          "field": "close",
+          "op": "greater",
+          "value": "EMA50",
+          "isColumn": true
+        },
+        {
+          "field": "EMA50",
+          "op": "greater",
+          "value": "EMA200",
+          "isColumn": true
+        },
+        {
+          "field": "volume",
+          "op": "greater",
+          "value": 500000
+        }
+      ],
+      "columns": [
+        "close",
+        "change",
+        "volume",
+        "EMA50",
+        "EMA200"
+      ],
+      "sort": {
+        "by": "change",
+        "order": "desc"
+      }
+    },
+    {
+      "name": "MACD yukarı kesişim",
+      "market": "crypto",
+      "timeframe": "|240",
+      "filters": [
+        {
+          "field": "MACD.macd",
+          "op": "crosses_above",
+          "value": "MACD.signal",
+          "isColumn": true
+        },
+        {
+          "field": "volume",
+          "op": "greater",
+          "value": 1000000
+        }
+      ],
+      "columns": [
+        "close",
+        "change",
+        "volume",
+        "MACD.macd",
+        "MACD.signal",
+        "RSI"
+      ],
+      "sort": {
+        "by": "volume",
+        "order": "desc"
+      }
+    }
+  ]
+}
