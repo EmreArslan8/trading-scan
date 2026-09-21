@@ -18,7 +18,7 @@ Aynı uygulama kendi penceresinde, sunucusuz çalışır; istekler kullanıcın�
 kendi bağlantısından gider, demo sınırı yoktur.
 
     python3 -m venv .venv
-    .venv/bin/pip install pywebview pyinstaller
+    .venv/bin/pip install pywebview pyinstaller certifi
     .venv/bin/python desktop.py     # paketlemeden dene
     .venv/bin/python build.py       # → dist/TVTarayici.app (Windows'ta .exe)
 

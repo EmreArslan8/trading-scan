@@ -101,8 +101,9 @@ def activate(key):
     """Anahtarı siteye doğrulatıp kaydeder. Döner: (başarılı_mı, mesaj)."""
     try:
         ok, reason = _ask_server(key)
-    except OSError:
-        return False, "lisans sunucusuna ulaşılamadı, internet bağlantısını kontrol edin"
+    except OSError as exc:
+        why = getattr(exc, "reason", exc)
+        return False, f"lisans sunucusuna ulaşılamadı ({why}), internet bağlantısını kontrol edin"
     if ok:
         _save({"key": key.strip(), "checked": int(time.time())})
     return ok, reason

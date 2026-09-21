@@ -16,6 +16,14 @@ from http.server import ThreadingHTTPServer
 
 os.environ.setdefault("TV_DESKTOP", "1")  # server/_gate import edilmeden önce
 
+# Paketlenmiş programda Python'un OpenSSL'i sertifikaları derlendiği makinedeki
+# yolda arar; kullanıcının bilgisayarında o yol yoktur ve HTTPS düşer.
+try:
+    import certifi
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+except ImportError:
+    pass
+
 from server import Handler  # noqa: E402
 
 TITLE = "TradingView Tarayıcı"

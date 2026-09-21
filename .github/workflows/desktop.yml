@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pywebview pyinstaller
+      - run: pip install pywebview pyinstaller certifi
       - run: python build.py
       - if: runner.os == 'macOS'
         run: cd dist && zip -qry TVTarayici-mac.zip TVTarayici.app
