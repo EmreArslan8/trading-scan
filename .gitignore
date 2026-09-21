@@ -3,3 +3,7 @@ __pycache__/
 .vercel/
 .DS_Store
 .vercel
+.venv/
+build/
+dist/
+*.spec

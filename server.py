@@ -22,7 +22,7 @@ from _pine import PineError  # noqa: E402
 from pinescan import run_pine_scan  # noqa: E402
 from rangescan import run_range_scan  # noqa: E402
 
-PUBLIC = BASE / "public"
+PUBLIC = (BASE / "public").resolve()
 TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
          ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
          ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon"}

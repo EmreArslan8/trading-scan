@@ -12,6 +12,28 @@ seviyesiyle karşılaştırarak seçilen piyasa evrenini otomatik tarar.
 
 Python 3.8+ yeterli. **Kurulacak paket yok** — yalnızca standart kütüphane.
 
+## Masaüstü program
+
+Aynı uygulama kendi penceresinde, sunucusuz çalışır; istekler kullanıcının
+kendi bağlantısından gider, demo sınırı yoktur.
+
+    python3 -m venv .venv
+    .venv/bin/pip install pywebview pyinstaller
+    .venv/bin/python desktop.py     # paketlemeden dene
+    .venv/bin/python build.py       # → dist/TVTarayici.app (Windows'ta .exe)
+
+Her işletim sistemi kendi programını derler; bunu GitHub Actions yapar.
+Yeni sürüm yayınlamak için etiket push'lanır:
+
+    git tag v1.1 && git push origin v1.1
+
+Windows `.exe` ve macOS `.zip` derlenip GitHub Releases'a konur. Sitedeki
+"Bilgisayar programı" butonu `releases/latest/download/...` adresini kullandığı
+için her zaman en son sürümü indirir.
+
+İmzasız olduğu için ilk açılışta uyarı çıkar: Windows'ta *Daha fazla bilgi →
+Yine de çalıştır*, macOS'ta uygulamaya sağ tık → *Aç*.
+
 ## Dosyalar
 
 | dosya | işi |
@@ -28,6 +50,8 @@ Python 3.8+ yeterli. **Kurulacak paket yok** — yalnızca standart kütüphane.
 | `api/fields.json` | piyasalar, periyotlar, operatörler, alanlar, hazır taramalar |
 | `public/index.html` | arayüz (tek dosya, çerçeve yok) |
 | `server.py` | yerel geliştirme sunucusu; aynı çekirdeği kullanır |
+| `desktop.py` | masaüstü sürüm: sunucuyu arka planda açıp kendi penceresinde gösterir |
+| `build.py` | masaüstü programı PyInstaller ile paketler |
 | `vercel.json` | Vercel yapılandırması |
 
 ## Yayına alma (Vercel)

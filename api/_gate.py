@@ -17,6 +17,7 @@ TTL = 7 * 24 * 3600
 FREE_SCANS = int(os.environ.get("FREE_SCANS", "3"))
 ACCESS_KEYS = {k.strip() for k in os.environ.get("ACCESS_KEYS", "").split(",") if k.strip()}
 ACCESS_ONLY = os.environ.get("ACCESS_ONLY", "") == "1"
+UNLIMITED = os.environ.get("TV_DESKTOP", "") == "1"  # masaüstü sürüm: sınır yok
 SECRET = os.environ.get("DEMO_SECRET", "degistirilmemis-varsayilan-anahtar").encode()
 
 
@@ -67,8 +68,8 @@ def check(headers, spend=True):
 
     Döner: (set_cookie_or_None, kalan_hak). Hak bittiyse Blocked yükseltir.
     """
-    if has_key(headers):
-        return None, None  # anahtarlı kullanım sınırsız
+    if UNLIMITED or has_key(headers):
+        return None, None  # masaüstü ya da anahtarlı kullanım sınırsız
 
     if supplied_key(headers):
         raise Blocked("erişim anahtarı geçersiz")
