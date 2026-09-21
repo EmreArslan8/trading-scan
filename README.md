@@ -20,7 +20,7 @@ kendi bağlantısından gider, demo sınırı yoktur.
     python3 -m venv .venv
     .venv/bin/pip install pywebview pyinstaller certifi
     .venv/bin/python desktop.py     # paketlemeden dene
-    .venv/bin/python build.py       # → dist/TVTarayici.app (Windows'ta .exe)
+    .venv/bin/python build.py       # → dist/TradingViewTarayici.app (Windows'ta .exe)
 
 Her işletim sistemi kendi programını derler; bunu GitHub Actions yapar.
 Yeni sürüm yayınlamak için etiket push'lanır:
@@ -71,6 +71,7 @@ yeniden sorar; internet yoksa son başarılı kontrolden sonra 7 gün çalışı
 | `api/_license.py` | lisans anahtarı üretme/doğrulama; programın siteye sorması |
 | `api/license.py` | `POST /api/license` — lisans anahtarını doğrular |
 | `tools/keygen.py` | müşteriye lisans anahtarı üretir |
+| `tools/make_icon.py` | `assets/` içindeki program ikonlarını üretir (Pillow) |
 | `vercel.json` | Vercel yapılandırması |
 
 ## Yayına alma (Vercel)

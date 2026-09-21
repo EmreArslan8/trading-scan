@@ -4,7 +4,7 @@
     pip install pywebview pyinstaller
     python3 build.py
 
-Çıktı: dist/TVTarayici.app (macOS) · dist/TVTarayici.exe (Windows).
+Çıktı: dist/TradingViewTarayici.app (macOS) · dist/TradingViewTarayici.exe (Windows).
 Her işletim sistemi kendi programını derler; Windows .exe'si Mac'te çıkmaz,
 bunun için .github/workflows/desktop.yml kullanılır.
 """
@@ -18,7 +18,9 @@ SEP = os.pathsep  # --add-data ayırıcısı: Windows ';', diğerleri ':'
 
 PyInstaller.__main__.run([
     "desktop.py",
-    "--name=TVTarayici",
+    "--name=TradingViewTarayici",
+    "--icon=assets/" + ("icon.ico" if sys.platform == "win32" else "icon.icns"),
+    "--osx-bundle-identifier=com.emrearslan.tradingviewtarayici",
     "--windowed",
     "--onefile" if sys.platform == "win32" else "--onedir",
     "--noconfirm",

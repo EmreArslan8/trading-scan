@@ -70,7 +70,7 @@ def _ask_server(key):
     """Siteye sorar. Ağ hatasında OSError yükseltir."""
     req = urllib.request.Request(
         LICENSE_URL, data=json.dumps({"key": key}).encode(),
-        headers={"Content-Type": "application/json", "User-Agent": "TVTarayici"},
+        headers={"Content-Type": "application/json", "User-Agent": "TradingViewTarayici"},
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
