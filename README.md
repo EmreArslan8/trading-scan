@@ -27,8 +27,9 @@ Yeni sürüm yayınlamak için etiket push'lanır:
 
     git tag v1.1 && git push origin v1.1
 
-Windows `.exe` ve macOS `.zip` derlenip GitHub Releases'a konur. Sitede
-indirme bağlantısı yoktur; program lisanslı müşteriye ayrıca verilir.
+Windows `.exe` ve macOS `.zip` derlenip GitHub Releases'a konur. Sitedeki
+"Bilgisayar programı" menüsü `releases/latest/download/...` adresini kullandığı
+için her zaman en son sürümü indirir; program lisans anahtarı olmadan tarama yapmaz.
 
 İmzasız olduğu için ilk açılışta uyarı çıkar: Windows'ta *Daha fazla bilgi →
 Yine de çalıştır*, macOS'ta uygulamaya sağ tık → *Aç*.
