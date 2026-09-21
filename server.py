@@ -17,7 +17,8 @@ BASE = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE / "api"))
 
 from _core import CATALOG, BadRequest, run_scan  # noqa: E402
-from _gate import Blocked, check  # noqa: E402
+from _gate import DESKTOP, Blocked, check  # noqa: E402
+from _license import activate, licensed, verify  # noqa: E402
 from _pine import PineError  # noqa: E402
 from pinescan import run_pine_scan  # noqa: E402
 from rangescan import run_range_scan  # noqa: E402
@@ -48,6 +49,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/catalog"):
             self.send_json(200, CATALOG)
             return
+        if self.path == "/api/license":
+            self.send_json(200, {"desktop": DESKTOP, "licensed": DESKTOP and licensed()})
+            return
 
         name = "index.html" if self.path in ("/", "") else self.path.lstrip("/").split("?")[0]
         path = (PUBLIC / name).resolve()
@@ -69,6 +73,16 @@ class Handler(BaseHTTPRequestHandler):
                 200, {"ok": True},
                 "tvdemo=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax",
             )
+            return
+        if self.path == "/api/license":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+                key = str(json.loads(self.rfile.read(length) or b"{}").get("key", ""))
+            except Exception:
+                self.send_json(400, {"valid": False, "error": "istek okunamadı"})
+                return
+            ok, reason = activate(key) if DESKTOP else verify(key)
+            self.send_json(200, {"valid": True} if ok else {"valid": False, "error": reason})
             return
         routes = {"/api/scan": run_scan, "/api/pinescan": run_pine_scan,
                   "/api/rangescan": run_range_scan}

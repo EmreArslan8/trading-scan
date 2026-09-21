@@ -33,6 +33,23 @@ indirme bağlantısı yoktur; program lisanslı müşteriye ayrıca verilir.
 İmzasız olduğu için ilk açılışta uyarı çıkar: Windows'ta *Daha fazla bilgi →
 Yine de çalıştır*, macOS'ta uygulamaya sağ tık → *Aç*.
 
+## Lisans (masaüstü)
+
+Masaüstü program lisans anahtarı olmadan tarama yapmaz. Anahtarı program ilk
+açılışta sorar, siteye (`/api/license`) doğrulatır ve hatırlar. Günde bir kez
+yeniden sorar; internet yoksa son başarılı kontrolden sonra 7 gün çalışır.
+
+    python3 tools/keygen.py --init            # bir kez: .license-secret oluşturur
+    python3 tools/keygen.py "Müşteri Adı"     # anahtar üretir → licenses.csv
+    python3 tools/keygen.py --list            # kime ne verildi
+    python3 tools/keygen.py --check TVS-…     # anahtar doğru mu
+
+- `.license-secret` ile Vercel'deki `LICENSE_SECRET` aynı olmalı. Bu dosya
+  kaybolursa verilen bütün anahtarlar geçersiz olur — **yedekleyin**.
+- İptal: anahtarı Vercel'de `REVOKED_KEYS` değişkenine virgülle ekleyip yeniden
+  yayınlayın; program en geç bir gün içinde kilitlenir (çevrimdışıysa 7 gün).
+- `.license-secret` ve `licenses.csv` git'e girmez.
+
 ## Dosyalar
 
 | dosya | işi |
@@ -51,6 +68,9 @@ Yine de çalıştır*, macOS'ta uygulamaya sağ tık → *Aç*.
 | `server.py` | yerel geliştirme sunucusu; aynı çekirdeği kullanır |
 | `desktop.py` | masaüstü sürüm: sunucuyu arka planda açıp kendi penceresinde gösterir |
 | `build.py` | masaüstü programı PyInstaller ile paketler |
+| `api/_license.py` | lisans anahtarı üretme/doğrulama; programın siteye sorması |
+| `api/license.py` | `POST /api/license` — lisans anahtarını doğrular |
+| `tools/keygen.py` | müşteriye lisans anahtarı üretir |
 | `vercel.json` | Vercel yapılandırması |
 
 ## Yayına alma (Vercel)

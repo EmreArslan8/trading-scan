@@ -27,5 +27,5 @@ PyInstaller.__main__.run([
     f"--add-data=public{SEP}public",
     f"--add-data=api/fields.json{SEP}.",
     *[f"--hidden-import={m}" for m in
-      ("_core", "_gate", "_pine", "_series", "_feeds", "pinescan", "rangescan")],
+      ("_core", "_gate", "_license", "_pine", "_series", "_feeds", "pinescan", "rangescan")],
 ])

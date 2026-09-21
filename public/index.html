@@ -625,6 +625,35 @@ function fmt(v, kind) {
   return Number(v.toPrecision(6)).toString();
 }
 
+/* masaüstü sürüm: anahtar kutusu lisans girişi olur, doğrulamayı program yapar */
+function setupLicense(ok) {
+  $("keyInput").placeholder = "TVS-XXXX-XXXX-…";
+  $("keySave").textContent = "Etkinleştir";
+  const show = msg => { $("keybox").hidden = false; $("keymsg").textContent = msg; };
+  if (ok) $("quota").textContent = "· lisanslı";
+  else show("Programı kullanmak için lisans anahtarınızı girin.");
+  $("keySave").onclick = async () => {
+    const key = $("keyInput").value.trim();
+    if (!key) return $("keyInput").focus();
+    $("keySave").disabled = true;
+    say("lisans doğrulanıyor…", "busy");
+    try {
+      const r = await (await fetch("/api/license", {
+        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({key}),
+      })).json();
+      if (!r.valid) throw new Error(r.error || "anahtar geçersiz");
+      $("keybox").hidden = true;
+      $("quota").textContent = "· lisanslı";
+      say("lisans etkinleştirildi");
+    } catch (e) {
+      show(`Lisans doğrulanamadı: ${e.message}`);
+      say("lisans doğrulanamadı", "bad");
+    } finally {
+      $("keySave").disabled = false;
+    }
+  };
+}
+
 function say(text, state) {
   $("status").textContent = text;
   $("dot").className = "dot" + (state ? " " + state : "");
@@ -1084,6 +1113,8 @@ function csv() {
     say(k ? "anahtar kaydedildi" : "anahtar silindi");
   };
   if (accessKey()) $("quota").textContent = "· anahtarlı erişim";
+  fetch("/api/license").then(r => r.json())
+    .then(lic => lic.desktop && setupLicense(lic.licensed)).catch(() => {});
 
   $("colToggle").onclick = () => $("coltool").classList.toggle("open");
   $("colClear").onclick = () => {
